@@ -390,13 +390,4 @@ def not_found(e):
 def server_error(e):
     return render_template('500.html'), 500
 
-if __name__ == '__main__':
-    # Validate environment variables in development
-    if app.config['DEBUG']:
-        try:
-            Config.validate_required_vars()
-        except ValueError as e:
-            print(f"Configuration Error: {e}")
-            print("Please set the required environment variables.")
-    
-    app.run(debug=app.config['DEBUG'], host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
+# Production deployment uses gunicorn - no local server needed

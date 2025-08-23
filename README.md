@@ -26,39 +26,7 @@ A streamlined OCR and claim processing system built with Flask, Mistral AI, and 
 - Arabic, Hindi, Thai, Vietnamese, Dutch, Polish
 - And 60+ more languages
 
-## Installation
-
-### Local Development
-
-1. **Clone the repository**
-   ```bash
-   git clone <your-repo-url>
-   cd ocr-claim-assessment
-   ```
-
-2. **Create virtual environment**
-   ```bash
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-   ```
-
-3. **Install dependencies**
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-4. **Environment setup**
-   ```bash
-   cp .env.example .env
-   # Edit .env with your actual configuration values
-   ```
-
-5. **Run the application**
-   ```bash
-   python app.py
-   ```
-
-### Production Deployment (Render)
+## Render Deployment
 
 1. **Supabase Setup**
    - Create account at [supabase.com](https://supabase.com)

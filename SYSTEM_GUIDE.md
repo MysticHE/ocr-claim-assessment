@@ -2,7 +2,7 @@
 
 ## System Overview
 
-The OCR Claim Assessment System is designed as a **memory-optimized, intelligent document processing platform** that combines the power of cloud-based AI with local processing capabilities. The system prioritizes efficiency, reliability, and cost-effectiveness.
+The OCR Claim Assessment System is designed as a **memory-optimized, intelligent document processing platform** optimized for cloud deployment on Render. The system prioritizes efficiency, reliability, and cost-effectiveness.
 
 ## Core Design Philosophy
 
@@ -11,9 +11,8 @@ The OCR Claim Assessment System is designed as a **memory-optimized, intelligent
 - **Solution**: Lazy loading - only initialize heavy resources when needed
 - **Result**: 95% memory reduction at startup (500MB+ → ~20MB)
 
-### 2. API-First with Local Fallback
-- **Primary**: Mistral AI (cloud-based, no local memory footprint)
-- **Fallback**: EasyOCR (local models, on-demand loading)
+### 2. API-First Cloud Architecture
+- **Primary**: Mistral AI (cloud-based, no server memory footprint)
 - **Benefit**: Fast startup, reliable processing, cost optimization
 
 ### 3. Progressive Enhancement
@@ -30,7 +29,7 @@ class MistralOnlyOCREngine:
     """
     Streamlined single-tier OCR processing system:
     - Mistral AI only (cloud-based, instant startup)
-    - No local dependencies or memory overhead
+    - No server dependencies or memory overhead
     """
 ```
 
@@ -40,7 +39,7 @@ def __init__(self):
     # ✅ Instant initialize - API client only (~2MB)
     self.client = Mistral(api_key=Config.MISTRAL_API_KEY)
     
-    # No local models or heavy dependencies to load
+    # No server models or heavy dependencies to load
 ```
 
 #### Processing Logic
@@ -310,11 +309,10 @@ export MISTRAL_API_KEY="your_key"
 export SUPABASE_URL="your_url"
 export SUPABASE_SERVICE_KEY="your_key"
 
-# 3. Run development server
-python app.py
+# 3. Deploy to Render (automatic via GitHub integration)
 
-# 4. Test OCR functionality
-curl -X POST http://localhost:5000/upload \
+# 4. Test OCR functionality on production
+curl -X POST https://your-app.onrender.com/upload \
   -F "file=@test_document.pdf" \
   -F "languages=en,zh"
 ```
