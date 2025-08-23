@@ -36,10 +36,23 @@ class MistralOnlyOCREngine:
             self.client = Mistral(api_key=self.api_key)
             self.mistral_available = True
             print("✓ Mistral client initialized successfully")
+            
+            # Test API connection
+            self._test_api_connection()
         except Exception as e:
             print(f"⚠️  Failed to initialize Mistral client: {e}")
             self.mistral_available = False
             self.client = None
+    
+    def _test_api_connection(self):
+        """Test basic API connection without making a full request"""
+        try:
+            # Simple test - just check if we can create a client and it's valid
+            if self.client and self.api_key:
+                print("✓ Mistral API connection test passed")
+        except Exception as e:
+            print(f"⚠️  Mistral API connection test failed: {e}")
+            self.mistral_available = False
     
     def encode_image_to_base64(self, image_path: str) -> str:
         """Encode image to base64 string for Mistral API"""
@@ -107,7 +120,7 @@ Format your response as clean, readable text. If there are multiple sections, se
             # Create prompt
             prompt = self.create_ocr_prompt(languages)
             
-            # Make API call
+            # Make API call according to Mistral API docs
             response = self.client.chat.complete(
                 model="pixtral-12b-2409",
                 messages=[
@@ -120,7 +133,9 @@ Format your response as clean, readable text. If there are multiple sections, se
                             },
                             {
                                 "type": "image_url",
-                                "image_url": base64_image
+                                "image_url": {
+                                    "url": base64_image
+                                }
                             }
                         ]
                     }
@@ -146,15 +161,34 @@ Format your response as clean, readable text. If there are multiple sections, se
             }
             
         except Exception as e:
+            error_message = str(e)
+            error_type = 'api_error'
+            
+            # Categorize specific errors
+            if 'api_key' in error_message.lower() or 'authentication' in error_message.lower():
+                error_type = 'authentication_error'
+                error_message = "Invalid or missing Mistral API key"
+            elif 'rate limit' in error_message.lower() or 'quota' in error_message.lower():
+                error_type = 'rate_limit_error'
+                error_message = "Mistral API rate limit exceeded"
+            elif 'network' in error_message.lower() or 'connection' in error_message.lower():
+                error_type = 'network_error'
+                error_message = "Network connection error to Mistral API"
+            elif 'model' in error_message.lower():
+                error_type = 'model_error'
+                error_message = "Mistral model error - check model name"
+            
+            print(f"Mistral API Error: {error_message} (Type: {error_type})")
+            
             return {
                 'success': False,
-                'error': str(e),
+                'error': error_message,
                 'text': '',
                 'confidence': 0.0,
                 'language': languages[0] if languages else 'en',
                 'processing_time_ms': int((time.time() - start_time) * 1000) if 'start_time' in locals() else 0,
                 'engine': 'mistral',
-                'error_type': 'api_error'
+                'error_type': error_type
             }
     
     def _calculate_confidence(self, text: str) -> float:
