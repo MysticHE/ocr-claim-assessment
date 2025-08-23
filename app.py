@@ -356,23 +356,29 @@ def view_enhanced_results(claim_id):
         # Structure data as expected by template
         result = {
             'claim_id': claim_id,
-            'claim_status': claim_data.get('claim_status', 'unknown'),
-            'confidence_score': claim_data.get('confidence_score', 0),
-            'processing_time': claim_data.get('metadata', {}).get('processing_time_ms', 0),
+            'status': claim_data.get('claim_status', 'unknown'),
+            'confidence': claim_data.get('confidence_score', 0),
+            'processing_time_ms': claim_data.get('metadata', {}).get('processing_time_ms', 0),
             'claim_amount': claim_data.get('claim_amount', 0),
             'ocr_text': claim_data.get('ocr_text', ''),
             'language_detected': claim_data.get('language_detected', ''),
             'file_name': claim_data.get('file_name', ''),
             'created_at': claim_data.get('created_at', ''),
+            'decision_reasons': claim_data.get('metadata', {}).get('decision_reasons', []),
+            
+            # Enhanced AI results - properly map from enhanced_data
             'workflow_steps': enhanced_data.get('workflow_steps', []) if enhanced_data else [],
             'document_classification': enhanced_data.get('document_classification', {}) if enhanced_data else {},
             'quality_assessment': enhanced_data.get('quality_assessment', {}) if enhanced_data else {},
-            'data_extraction': enhanced_data.get('data_extraction', {}) if enhanced_data else {},
-            'fraud_detection': enhanced_data.get('fraud_detection', {}) if enhanced_data else {},
-            'policy_check': enhanced_data.get('policy_check', {}) if enhanced_data else {},
-            'decision_summary': enhanced_data.get('decision_summary', {}) if enhanced_data else {},
+            'extracted_data': enhanced_data.get('extracted_data', {}) if enhanced_data else {},
+            'fraud_findings': enhanced_data.get('fraud_findings', []) if enhanced_data else [],
+            'validation_issues': enhanced_data.get('validation_issues', []) if enhanced_data else [],
             'ai_engines_used': enhanced_data.get('ai_engines_used', []) if enhanced_data else [],
-            'metadata': claim_data.get('metadata', {})
+            'workflow_completion': enhanced_data.get('workflow_completion', {}) if enhanced_data else {},
+            
+            # For backward compatibility and debugging
+            'metadata': claim_data.get('metadata', {}),
+            'enhanced_data_available': enhanced_data is not None
         }
         
         return render_template('enhanced_results.html', 

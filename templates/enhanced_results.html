@@ -10,359 +10,6 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/components.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/responsive.css') }}">
     
-    <!-- Enhanced results specific styles -->
-    <style>
-        /* Enhanced Results Specific Styles */
-        .enhanced-results-container {
-            padding: 2rem 0;
-        }
-        
-        .workflow-progress {
-            background: var(--surface-color);
-            border-radius: var(--radius-lg);
-            padding: 1.5rem;
-            margin-bottom: 2rem;
-            box-shadow: var(--shadow-md);
-            border: 1px solid var(--border-color);
-        }
-        
-        .workflow-title {
-            font-size: 1.25rem;
-            font-weight: 600;
-            color: var(--text-color);
-            margin-bottom: 1rem;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-        
-        .workflow-step {
-            display: flex;
-            align-items: flex-start;
-            gap: 1rem;
-            padding: 1rem 0;
-            border-bottom: 1px solid var(--border-color);
-        }
-        
-        .workflow-step:last-child {
-            border-bottom: none;
-        }
-        
-        .step-indicator {
-            width: 24px;
-            height: 24px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.75rem;
-            font-weight: 600;
-            flex-shrink: 0;
-        }
-        
-        .step-indicator.completed {
-            background: var(--success-color);
-            color: white;
-        }
-        
-        .step-indicator.failed {
-            background: var(--error-color);
-            color: white;
-        }
-        
-        .step-indicator.skipped {
-            background: var(--warning-color);
-            color: white;
-        }
-        
-        .step-indicator.in_progress {
-            background: var(--primary-color);
-            color: white;
-        }
-        
-        .step-indicator.pending {
-            background: var(--border-color);
-            color: var(--text-secondary);
-        }
-        
-        .step-content {
-            flex: 1;
-        }
-        
-        .step-name {
-            font-weight: 600;
-            color: var(--text-color);
-            margin-bottom: 0.25rem;
-        }
-        
-        .step-description {
-            font-size: 0.875rem;
-            color: var(--text-secondary);
-            line-height: 1.5;
-        }
-        
-        .step-time {
-            font-size: 0.75rem;
-            color: var(--text-secondary);
-            margin-top: 0.25rem;
-        }
-        
-        /* AI Analysis Results */
-        .ai-results-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 1.5rem;
-            margin: 2rem 0;
-        }
-        
-        .ai-result-card {
-            background: var(--surface-color);
-            border-radius: var(--radius-lg);
-            padding: 1.5rem;
-            box-shadow: var(--shadow-sm);
-            border: 1px solid var(--border-color);
-            transition: var(--transition);
-        }
-        
-        .ai-result-card:hover {
-            box-shadow: var(--shadow-md);
-        }
-        
-        .ai-result-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1rem;
-        }
-        
-        .ai-result-title {
-            font-size: 1rem;
-            font-weight: 600;
-            color: var(--text-color);
-        }
-        
-        .ai-badge {
-            background: var(--primary-color);
-            color: white;
-            font-size: 0.75rem;
-            padding: 0.25rem 0.5rem;
-            border-radius: var(--radius-sm);
-            font-weight: 500;
-        }
-        
-        .confidence-display {
-            margin: 1rem 0;
-        }
-        
-        .confidence-label {
-            font-size: 0.875rem;
-            font-weight: 600;
-            color: var(--text-color);
-            margin-bottom: 0.5rem;
-        }
-        
-        .confidence-bar-container {
-            height: 8px;
-            background: var(--border-color);
-            border-radius: 4px;
-            overflow: hidden;
-        }
-        
-        .confidence-fill {
-            height: 100%;
-            border-radius: 4px;
-            transition: width 0.5s ease;
-        }
-        
-        .confidence-excellent { background: var(--success-color); }
-        .confidence-good { background: #20c997; }
-        .confidence-fair { background: var(--warning-color); }
-        .confidence-poor { background: #fd7e14; }
-        .confidence-bad { background: var(--error-color); }
-        
-        .confidence-text {
-            font-size: 0.875rem;
-            font-weight: 600;
-            color: var(--text-color);
-            margin-top: 0.25rem;
-            text-align: right;
-        }
-        
-        /* Quality Metrics */
-        .quality-metrics {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 1rem;
-            margin: 1rem 0;
-        }
-        
-        .quality-metric {
-            padding: 0.75rem;
-            background: var(--background-color);
-            border-radius: var(--radius-md);
-            border: 1px solid var(--border-color);
-            text-align: center;
-        }
-        
-        .quality-metric-value {
-            font-size: 1.25rem;
-            font-weight: 700;
-            color: var(--text-color);
-            margin-bottom: 0.25rem;
-        }
-        
-        .quality-metric-label {
-            font-size: 0.75rem;
-            color: var(--text-secondary);
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-        }
-        
-        /* Data Extraction Display */
-        .extracted-data-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1rem;
-            margin: 1rem 0;
-        }
-        
-        .extracted-field {
-            padding: 1rem;
-            background: var(--background-color);
-            border-radius: var(--radius-md);
-            border: 1px solid var(--border-color);
-        }
-        
-        .field-label {
-            font-size: 0.75rem;
-            font-weight: 600;
-            color: var(--text-secondary);
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            margin-bottom: 0.5rem;
-        }
-        
-        .field-value {
-            font-weight: 600;
-            color: var(--text-color);
-        }
-        
-        /* Decision Summary */
-        .decision-summary {
-            background: var(--surface-color);
-            border-radius: var(--radius-lg);
-            padding: 2rem;
-            margin: 2rem 0;
-            box-shadow: var(--shadow-md);
-            border-left: 4px solid var(--primary-color);
-        }
-        
-        .decision-summary.approved {
-            border-left-color: var(--success-color);
-        }
-        
-        .decision-summary.rejected {
-            border-left-color: var(--error-color);
-        }
-        
-        .decision-summary.review {
-            border-left-color: var(--warning-color);
-        }
-        
-        .decision-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1rem;
-        }
-        
-        .decision-status {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-            padding: 0.5rem 1rem;
-            border-radius: var(--radius-md);
-            font-size: 0.875rem;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-        }
-        
-        .decision-status.approved {
-            background: rgba(22, 163, 74, 0.1);
-            color: var(--success-color);
-        }
-        
-        .decision-status.rejected {
-            background: rgba(220, 38, 38, 0.1);
-            color: var(--error-color);
-        }
-        
-        .decision-status.review {
-            background: rgba(217, 119, 6, 0.1);
-            color: var(--warning-color);
-        }
-        
-        .decision-reasons {
-            margin: 1rem 0;
-        }
-        
-        .reason-item {
-            padding: 0.5rem 0;
-            border-bottom: 1px solid var(--border-color);
-            font-size: 0.875rem;
-            color: var(--text-color);
-        }
-        
-        .reason-item:last-child {
-            border-bottom: none;
-        }
-        
-        /* Responsive adjustments */
-        @media (max-width: 768px) {
-            .ai-results-grid {
-                grid-template-columns: 1fr;
-            }
-            
-            .extracted-data-grid {
-                grid-template-columns: 1fr;
-            }
-            
-            .quality-metrics {
-                grid-template-columns: repeat(2, 1fr);
-            }
-            
-            .decision-header {
-                flex-direction: column;
-                align-items: stretch;
-                gap: 1rem;
-            }
-            
-            .workflow-step {
-                flex-direction: column;
-                gap: 0.5rem;
-            }
-            
-            .step-indicator {
-                align-self: flex-start;
-            }
-        }
-        
-        /* Print styles */
-        @media print {
-            .action-buttons {
-                display: none;
-            }
-            
-            .workflow-progress,
-            .ai-result-card,
-            .decision-summary {
-                box-shadow: none;
-                border: 1px solid #000;
-                page-break-inside: avoid;
-            }
-        }
-    </style>
 </head>
 
 <body>
@@ -406,14 +53,18 @@
                             {% endif %}
                         </div>
                         <div class="step-content">
-                            <div class="step-name">{{ step.name }}</div>
-                            <div class="step-description">{{ step.description }}</div>
-                            {% if step.processing_time %}
-                            <div class="step-time">Completed in {{ "%.2f"|format(step.processing_time) }}s</div>
+                            <div class="step-name">{{ step.step_name|title|replace('_', ' ') }}</div>
+                            <div class="step-description">{{ step.output_summary or 'Processing step' }}</div>
+                            {% if step.duration_ms %}
+                            <div class="step-time">Completed in {{ "%.2f"|format(step.duration_ms / 1000) }}s</div>
                             {% endif %}
                         </div>
                     </div>
                     {% endfor %}
+                {% else %}
+                <div class="alert alert-info">
+                    No detailed workflow information available. This may be due to enhanced processing not being fully completed.
+                </div>
                 {% endif %}
             </div>
 
@@ -526,7 +177,7 @@
                 {% endif %}
 
                 <!-- Fraud Detection -->
-                {% if result.fraud_findings %}
+                {% if result.fraud_findings is defined %}
                 <div class="ai-result-card">
                     <div class="ai-result-header">
                         <h4 class="ai-result-title">Fraud Detection</h4>
@@ -589,13 +240,27 @@
             </div>
 
             <!-- Original OCR Text -->
-            {% if ocr_result and ocr_result.text %}
+            {% if result.ocr_text %}
             <div class="extracted-text">
                 <h4 class="extracted-text-title">
                     <span>Original OCR Text</span>
-                    <span class="ai-badge">{{ ocr_result.engine|title }} OCR</span>
+                    <span class="ai-badge">{{ result.ai_engines_used[0] if result.ai_engines_used else 'Mistral' }} OCR</span>
                 </h4>
-                <div class="extracted-text-content">{{ ocr_result.text }}</div>
+                <div class="extracted-text-content">{{ result.ocr_text }}</div>
+            </div>
+            {% endif %}
+
+            <!-- Debug Information (remove in production) -->
+            {% if not result.enhanced_data_available %}
+            <div class="alert alert-warning">
+                <strong>Debug Information:</strong>
+                Enhanced processing data is not available. This could be due to:
+                <ul>
+                    <li>Processing still in progress</li>
+                    <li>Enhanced processor not initialized properly</li>
+                    <li>Data structure mismatch</li>
+                </ul>
+                <small>Enhanced data available: {{ result.enhanced_data_available }}</small>
             </div>
             {% endif %}
 
