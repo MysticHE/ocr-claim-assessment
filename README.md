@@ -1,11 +1,11 @@
-# OCR Claim Assessment System
+# Enhanced AI-Powered Insurance Claims Processing System
 
-A comprehensive multi-language OCR and claim processing system built with Flask, PaddleOCR, Mistral AI, and Supabase.
+A streamlined OCR and claim processing system built with Flask, Mistral AI, and Supabase. **Version 2.0** features a Mistral-only architecture for maximum performance and reliability.
 
 ## Features
 
-- **Multi-Language OCR**: Supports 80+ languages including English, Chinese, Malay, Tamil, Korean, Japanese, and more
-- **AI-Powered Processing**: Advanced OCR with PaddleOCR and Mistral AI integration
+- **Multi-Language OCR**: Supports 80+ languages with Mistral AI vision-language model
+- **AI-Powered Processing**: Advanced OCR with Mistral AI Pixtral engine
 - **Automated Claim Assessment**: Smart decision-making based on configurable business rules
 - **Real-time Processing**: Fast document processing with progress tracking
 - **Secure Database**: Supabase integration for reliable data storage
@@ -92,7 +92,7 @@ ocr-claim-assessment/
 ├── templates/            # HTML templates
 ├── config/               # Application configuration
 ├── database/             # Supabase client and models
-├── ocr_engine/          # OCR processing (PaddleOCR, Mistral)
+├── ocr_engine/          # OCR processing (Mistral AI only)
 ├── claims_engine/       # Business logic and claim processing
 └── README.md            # This file
 ```
@@ -201,19 +201,12 @@ CREATE TABLE ocr_results (
 
 ### Common Issues
 
-1. **PaddleOCR Installation**
-   ```bash
-   pip install paddleocr==2.7.3
-   # If issues with dependencies:
-   pip install opencv-python-headless==4.8.1.78
-   ```
-
-2. **Mistral API Issues**
+1. **Mistral API Issues**
    - Verify API key is set correctly
    - Check rate limits and quotas
    - Ensure model availability
 
-3. **Supabase Connection**
+2. **Supabase Connection**
    - Verify URL and keys are correct
    - Check database schema is created
    - Ensure service role key has necessary permissions

@@ -124,16 +124,15 @@ def test_enhanced_processor():
 def test_ocr_engines():
     """Test OCR engines availability"""
     try:
-        from ocr_engine.mistral_ocr import HybridOCREngine
+        from ocr_engine.mistral_only_ocr import MistralOnlyOCREngine
         
         print("\nTesting OCR Engines...")
         
-        ocr_engine = HybridOCREngine()
+        ocr_engine = MistralOnlyOCREngine()
         
         # Test engine availability
-        print(f"  ✅ Hybrid OCR Engine initialized")
-        print(f"     - Mistral AI available: {ocr_engine.mistral_available}")
-        print(f"     - EasyOCR lazy-loading ready: {not ocr_engine.easyocr_initialization_attempted}")
+        print(f"  ✅ Mistral-Only OCR Engine initialized")
+        print(f"     - Mistral API available: {ocr_engine.client is not None}")
         
         return True
         

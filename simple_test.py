@@ -36,7 +36,7 @@ def test_imports():
         return False
     
     try:
-        from ocr_engine.mistral_ocr import HybridOCREngine
+        from ocr_engine.mistral_only_ocr import MistralOnlyOCREngine
         print("  - OCR Engine: OK")
     except Exception as e:
         print(f"  - OCR Engine: FAIL - {e}")

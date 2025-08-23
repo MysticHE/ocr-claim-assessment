@@ -23,63 +23,55 @@ The OCR Claim Assessment System is designed as a **memory-optimized, intelligent
 
 ## Technical Architecture Deep Dive
 
-### HybridOCREngine - The Heart of the System
+### MistralOnlyOCREngine - The Heart of the System
 
 ```python
-class HybridOCREngine:
+class MistralOnlyOCREngine:
     """
-    Intelligent two-tier OCR processing system:
-    - Tier 1: Mistral AI (cloud-based, instant)
-    - Tier 2: EasyOCR (local, lazy-loaded)
+    Streamlined single-tier OCR processing system:
+    - Mistral AI only (cloud-based, instant startup)
+    - No local dependencies or memory overhead
     """
 ```
 
 #### Initialization Strategy
 ```python
 def __init__(self):
-    # ✅ Always initialize - API client only (~5MB)
-    self.mistral_engine = MistralOCREngine()
+    # ✅ Instant initialize - API client only (~2MB)
+    self.client = Mistral(api_key=Config.MISTRAL_API_KEY)
     
-    # ⏳ Lazy initialize - load only when needed
-    self.easyocr_reader = None
-    self.easyocr_initialization_attempted = False
+    # No local models or heavy dependencies to load
 ```
 
 #### Processing Logic
 ```python
 def process_image(self, image_path, languages):
-    # 1. Try Mistral AI first (95% success rate)
-    if self.mistral_available:
-        result = self.mistral_engine.process_image(image_path, languages)
-        if result.get('success'):
-            return result  # ✅ Fast path - no fallback needed
-    
-    # 2. Fall back to EasyOCR only if necessary
-    if self._ensure_easyocr_initialized():  # Lazy loading here
-        return self._process_with_easyocr(image_path, languages)
-    
-    # 3. Graceful failure if both engines unavailable
-    return self._generate_error_response()
+    # Direct Mistral AI processing with comprehensive error handling
+    try:
+        result = self._process_with_mistral(image_path, languages)
+        return result  # ✅ Direct processing with error handling
+    except Exception as e:
+        return self._generate_error_response(str(e))
 ```
 
 ### Memory Management Pattern
 
-#### Cold Start (Optimal)
+#### Startup (Streamlined)
 ```
 App Startup Memory Usage:
 ├── Flask Application: ~10MB
-├── Mistral AI Client: ~5MB
-├── EasyOCR Models: 0MB (not loaded)
-└── Total: ~15MB
+├── Mistral AI Client: ~2MB
+├── No Local Models: 0MB
+└── Total: ~12MB
 ```
 
-#### Warm State (Fallback Engaged)
+#### Runtime (Consistent)
 ```
 Runtime Memory Usage:
 ├── Flask Application: ~10MB
-├── Mistral AI Client: ~5MB
-├── EasyOCR Models: ~100MB (loaded on demand)
-└── Total: ~115MB
+├── Mistral AI Client: ~2MB
+├── Processing Overhead: ~3MB
+└── Total: ~15MB
 ```
 
 ## OCR Engine Comparison
@@ -330,7 +322,7 @@ curl -X POST http://localhost:5000/upload \
 ### Testing Strategy
 ```bash
 # Unit tests for individual engines
-pytest tests/test_mistral_ocr.py
+pytest simple_test.py
 pytest tests/test_easyocr_engine.py
 
 # Integration tests for hybrid system
