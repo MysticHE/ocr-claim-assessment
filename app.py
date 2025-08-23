@@ -10,6 +10,7 @@ from config.settings import Config
 from database.supabase_client import SupabaseClient
 from ocr_engine.mistral_ocr import HybridOCREngine
 from claims_engine.processor import ClaimProcessor
+from claims_engine.enhanced_processor import EnhancedClaimProcessor
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -23,11 +24,13 @@ try:
     db = SupabaseClient()
     ocr_engine = HybridOCREngine()
     claim_processor = ClaimProcessor()
+    enhanced_claim_processor = EnhancedClaimProcessor()
 except Exception as e:
     print(f"Error initializing services: {e}")
     db = None
     ocr_engine = None
     claim_processor = None
+    enhanced_claim_processor = None
 
 def allowed_file(filename):
     """Check if file extension is allowed"""
@@ -56,7 +59,7 @@ def upload_file():
     """Handle file upload and OCR processing"""
     try:
         # Check if services are initialized
-        if not all([db, ocr_engine, claim_processor]):
+        if not all([db, ocr_engine, enhanced_claim_processor]):
             return jsonify({
                 'success': False,
                 'error': 'Services not properly initialized. Please try again later.'
@@ -111,13 +114,13 @@ def upload_file():
         # Process OCR
         ocr_results = ocr_engine.process_image(filepath, selected_languages)
         
-        # Process claim logic
-        claim_decision = claim_processor.process_claim(ocr_results)
+        # Process claim logic with enhanced AI workflow
+        claim_decision = enhanced_claim_processor.process_enhanced_claim(ocr_results, filepath)
         
         # Calculate processing time
         processing_time = int((time.time() - start_time) * 1000)
         
-        # Update claim with results
+        # Update claim with enhanced results
         db.update_claim_status(
             claim_id, 
             claim_decision['status'], 
@@ -127,7 +130,8 @@ def upload_file():
                 'language_detected': ocr_results.get('detected_language', ''),
                 'processing_time_ms': processing_time,
                 'claim_amount': claim_decision.get('amount', 0),
-                'decision_reasons': claim_decision.get('reasons', [])
+                'decision_reasons': claim_decision.get('reasons', []),
+                'enhanced_results': claim_decision if claim_decision.get('success', False) else None
             }
         )
         
@@ -150,7 +154,7 @@ def upload_file():
         return jsonify({
             'success': True,
             'claim_id': claim_id,
-            'redirect_url': url_for('view_results', claim_id=claim_id)
+            'redirect_url': url_for('view_enhanced_results', claim_id=claim_id)
         })
         
     except RequestEntityTooLarge:
@@ -200,6 +204,42 @@ def view_results(claim_id):
         
     except Exception as e:
         flash('Error retrieving results', 'error')
+        return redirect(url_for('index'))
+
+@app.route('/enhanced/<claim_id>')
+def view_enhanced_results(claim_id):
+    """Display enhanced processing results with AI workflow"""
+    try:
+        if not db:
+            flash('Database service unavailable', 'error')
+            return redirect(url_for('index'))
+            
+        # Get claim data
+        claim_result = db.get_claim(claim_id)
+        
+        if not claim_result.data:
+            flash('Claim not found', 'error')
+            return redirect(url_for('index'))
+            
+        claim_data = claim_result.data[0]
+        
+        # Get OCR results
+        ocr_result = db.get_ocr_result(claim_id)
+        ocr_data = ocr_result.data[0] if ocr_result.data else {}
+        
+        # Try to parse enhanced data from metadata
+        enhanced_data = None
+        if claim_data.get('metadata') and isinstance(claim_data.get('metadata'), dict):
+            enhanced_data = claim_data.get('metadata').get('enhanced_results')
+        
+        return render_template('enhanced_results.html', 
+                             claim=claim_data, 
+                             ocr=ocr_data,
+                             enhanced_data=enhanced_data,
+                             languages=Config.LANGUAGE_MAPPINGS)
+        
+    except Exception as e:
+        flash('Error retrieving enhanced results', 'error')
         return redirect(url_for('index'))
 
 @app.route('/api/status/<claim_id>')
