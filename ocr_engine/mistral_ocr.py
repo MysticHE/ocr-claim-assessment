@@ -285,10 +285,12 @@ class HybridOCREngine:
     """Hybrid OCR engine that combines EasyOCR and Mistral AI for best results"""
     
     def __init__(self):
-        """Initialize hybrid OCR engine with EasyOCR and Mistral AI"""
+        """Initialize hybrid OCR engine with lazy EasyOCR loading"""
         self.mistral_available = False
+        self.easyocr_reader = None
+        self.easyocr_initialization_attempted = False
         
-        # Initialize Mistral OCR
+        # Initialize Mistral OCR (primary engine)
         try:
             self.mistral_engine = MistralOCREngine()
             self.mistral_available = True
@@ -296,18 +298,11 @@ class HybridOCREngine:
             print(f"Mistral OCR not available in hybrid engine: {e}")
             self.mistral_engine = None
         
-        # Initialize EasyOCR as fallback
-        try:
-            import easyocr
-            self.easyocr_reader = easyocr.Reader(['en'], gpu=False)
-            self.easyocr_available = True
-        except Exception as e:
-            print(f"EasyOCR not available in hybrid engine: {e}")
-            self.easyocr_reader = None
-            self.easyocr_available = False
+        # Don't initialize EasyOCR here - use lazy loading to save memory
+        # EasyOCR will be initialized only when Mistral AI fails
         
-        if not self.mistral_available and not self.easyocr_available:
-            raise RuntimeError("No OCR engines available")
+        if not self.mistral_available:
+            print("Warning: Primary OCR engine (Mistral AI) not available. EasyOCR will be used as fallback.")
     
     def process_image(self, image_path: str, languages: List[str], 
                      use_both: bool = True) -> Dict[str, Any]:
@@ -318,15 +313,59 @@ class HybridOCREngine:
         if self.mistral_available:
             mistral_result = self.mistral_engine.process_image(image_path, languages)
             results['mistral'] = mistral_result
+            
+            # If Mistral succeeded and we don't need both engines, return result
+            if mistral_result.get('success', False) and not use_both:
+                return self._combine_results(results, image_path, languages)
         
-        # Try EasyOCR as fallback if requested or if Mistral failed
-        if self.easyocr_available and (use_both or not self.mistral_available or 
-                                      (self.mistral_available and not results.get('mistral', {}).get('success', False))):
+        # Try EasyOCR as fallback only if Mistral failed or is unavailable
+        need_easyocr = (
+            not self.mistral_available or 
+            (self.mistral_available and not results.get('mistral', {}).get('success', False)) or
+            use_both
+        )
+        
+        if need_easyocr:
+            # Lazy initialization of EasyOCR
+            if not self._ensure_easyocr_initialized():
+                # EasyOCR initialization failed, return Mistral result if available
+                if results:
+                    return self._combine_results(results, image_path, languages)
+                else:
+                    return {
+                        'success': False,
+                        'error': 'No OCR engines available',
+                        'text': '',
+                        'confidence': 0.0,
+                        'engine': 'hybrid'
+                    }
+            
             easyocr_result = self._process_with_easyocr(image_path, languages)
             results['easyocr'] = easyocr_result
         
         # Combine results or return best available
         return self._combine_results(results, image_path, languages)
+    
+    def _ensure_easyocr_initialized(self) -> bool:
+        """Lazy initialization of EasyOCR reader"""
+        if self.easyocr_reader is not None:
+            return True
+        
+        if self.easyocr_initialization_attempted:
+            return False
+        
+        self.easyocr_initialization_attempted = True
+        
+        try:
+            print("Initializing EasyOCR (this may take a moment to download models)...")
+            import easyocr
+            self.easyocr_reader = easyocr.Reader(['en'], gpu=False)
+            print("EasyOCR initialized successfully")
+            return True
+        except Exception as e:
+            print(f"Failed to initialize EasyOCR: {e}")
+            self.easyocr_reader = None
+            return False
     
     def _process_with_easyocr(self, image_path: str, languages: List[str]) -> Dict[str, Any]:
         """Process image with EasyOCR"""
