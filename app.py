@@ -121,7 +121,7 @@ def validate_file(file):
         return False, "No file selected"
     
     if not allowed_file(file.filename):
-        return False, "File type not allowed. Supported: PDF, PNG, JPG, JPEG, TIFF, BMP"
+        return False, "File type not allowed. Supported: PNG, JPG, JPEG, GIF, WebP"
     
     return True, "Valid file"
 
