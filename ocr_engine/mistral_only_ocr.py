@@ -222,33 +222,24 @@ Format your response as clean, readable text. If there are multiple sections, se
             # Encode PDF to base64 for API call
             pdf_base64 = self._encode_pdf_to_base64(pdf_path)
             
-            # Create prompt
-            prompt = self.create_ocr_prompt(languages)
-            
-            # Make API call to Mistral OCR endpoint
-            response = self.client.chat.complete(
+            # Make API call to Mistral OCR endpoint (not chat completions)
+            response = self.client.ocr.process(
                 model="mistral-ocr-latest",
-                messages=[
-                    {
-                        "role": "user",
-                        "content": [
-                            {
-                                "type": "text",
-                                "text": prompt
-                            },
-                            {
-                                "type": "image_url",
-                                "image_url": {
-                                    "url": pdf_base64
-                                }
-                            }
-                        ]
-                    }
-                ]
+                document={
+                    "type": "document_url",
+                    "document_url": pdf_base64
+                },
+                include_image_base64=True
             )
             
-            # Extract text from response
-            extracted_text = response.choices[0].message.content.strip()
+            # Extract text from OCR response
+            extracted_text = ""
+            if response.pages:
+                # Combine text from all pages
+                extracted_text = "\n\n".join([
+                    page.markdown for page in response.pages if hasattr(page, 'markdown') and page.markdown
+                ])
+            
             processing_time = (time.time() - start_time) * 1000
             
             # Calculate confidence and detect language
