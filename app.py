@@ -408,7 +408,7 @@ def health_check():
             try:
                 # Test database connection with a simple query
                 # This will fail if database is not accessible
-                db.client.table('claims').select('id').limit(1).execute()
+                db.supabase.table('claims').select('id').limit(1).execute()
                 health_status['services']['database'] = {
                     'status': 'healthy',
                     'message': 'Database connection successful'
