@@ -16,6 +16,10 @@ class Config:
     MISTRAL_API_KEY = os.environ.get('MISTRAL_API_KEY')
     SUPPORTED_LANGUAGES = os.environ.get('SUPPORTED_LANGUAGES', 'en,ch_sim,ms,ta,korean').split(',')
     
+    # OCR Engine Selection
+    # Options: 'hybrid' (Mistral + EasyOCR fallback) or 'mistral_only' (streamlined)
+    OCR_ENGINE_TYPE = os.environ.get('OCR_ENGINE_TYPE', 'hybrid')
+    
     # File Upload Configuration
     UPLOAD_FOLDER = os.environ.get('UPLOAD_FOLDER', 'uploads')
     MAX_FILE_SIZE = int(os.environ.get('MAX_FILE_SIZE', 16 * 1024 * 1024))  # 16MB

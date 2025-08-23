@@ -8,7 +8,7 @@ from datetime import datetime
 
 from config.settings import Config
 from database.supabase_client import SupabaseClient
-from ocr_engine.mistral_ocr import HybridOCREngine
+from ocr_engine.mistral_only_ocr import MistralOnlyOCREngine
 from claims_engine.processor import ClaimProcessor
 from claims_engine.enhanced_processor import EnhancedClaimProcessor
 
@@ -19,18 +19,59 @@ app.config.from_object(Config)
 # Create upload folder
 Config.create_upload_folder()
 
-# Initialize services
+# Initialize services with proper error handling
+db = None
+ocr_engine = None
+claim_processor = None
+enhanced_claim_processor = None
+
 try:
     db = SupabaseClient()
-    ocr_engine = HybridOCREngine()
-    claim_processor = ClaimProcessor()
-    enhanced_claim_processor = EnhancedClaimProcessor()
+    print("✓ Database client initialized")
 except Exception as e:
-    print(f"Error initializing services: {e}")
-    db = None
+    print(f"✗ Database initialization failed: {e}")
+
+try:
+    ocr_engine = MistralOnlyOCREngine()
+    print("✓ Mistral OCR engine initialized")
+except Exception as e:
+    print(f"✗ OCR engine initialization failed: {e}")
     ocr_engine = None
-    claim_processor = None
-    enhanced_claim_processor = None
+
+try:
+    claim_processor = ClaimProcessor()
+    print("✓ Claim processor initialized")
+except Exception as e:
+    print(f"✗ Claim processor initialization failed: {e}")
+
+try:
+    enhanced_claim_processor = EnhancedClaimProcessor()
+    print("✓ Enhanced claim processor initialized")
+except Exception as e:
+    print(f"✗ Enhanced claim processor initialization failed: {e}")
+
+# Service availability checks
+def check_services():
+    """Check if required services are available"""
+    issues = []
+    if not db:
+        issues.append("Database connection not available")
+    if not ocr_engine:
+        issues.append("OCR engine not available - check Mistral API key")
+    if not enhanced_claim_processor:
+        issues.append("Enhanced claim processor not available")
+    
+    if issues:
+        print("⚠️  Service issues detected:")
+        for issue in issues:
+            print(f"   - {issue}")
+    else:
+        print("✓ All services initialized successfully")
+    
+    return len(issues) == 0
+
+# Check services on startup
+services_ready = check_services()
 
 def allowed_file(filename):
     """Check if file extension is allowed"""
@@ -111,8 +152,51 @@ def upload_file():
         # Save to database
         db.insert_claim(claim_data)
         
-        # Process OCR
+        # Process OCR with proper error handling
         ocr_results = ocr_engine.process_image(filepath, selected_languages)
+        
+        # Check if OCR was successful
+        if not ocr_results.get('success', False):
+            error_type = ocr_results.get('error_type', 'unknown')
+            error_msg = ocr_results.get('error', 'OCR processing failed')
+            
+            # Update claim status to failed
+            db.update_claim_status(
+                claim_id, 
+                'failed', 
+                0.0,
+                {
+                    'error_message': error_msg,
+                    'error_type': error_type,
+                    'processing_time_ms': int((time.time() - start_time) * 1000),
+                    'selected_languages': selected_languages
+                }
+            )
+            
+            # Log the error
+            db.insert_log(claim_id, 'error', f'OCR processing failed: {error_msg}')
+            
+            # Clean up file
+            try:
+                os.remove(filepath)
+            except:
+                pass
+            
+            # Return user-friendly error message based on error type
+            if error_type == 'service_unavailable':
+                error_message = "OCR service is temporarily unavailable. Please ensure you have a valid Mistral API key configured and try again."
+            elif error_type == 'file_not_found':
+                error_message = "The uploaded file could not be processed. Please try uploading the file again."
+            elif error_type == 'api_error':
+                error_message = "There was an issue connecting to the OCR service. Please check your internet connection and try again."
+            else:
+                error_message = f"OCR processing failed: {error_msg}"
+            
+            return jsonify({
+                'success': False,
+                'error': error_message,
+                'error_type': error_type
+            }), 400
         
         # Process claim logic with enhanced AI workflow
         claim_decision = enhanced_claim_processor.process_enhanced_claim(ocr_results, filepath)
@@ -142,7 +226,7 @@ def upload_file():
             'extracted_text': ocr_results.get('text', ''),
             'confidence_score': ocr_results.get('confidence', 0),
             'bounding_boxes': ocr_results.get('boxes', []),
-            'processing_engine': 'paddleocr'
+            'processing_engine': ocr_results.get('engine', 'mistral')
         })
         
         # Clean up uploaded file
@@ -263,6 +347,33 @@ def get_claim_status(claim_id):
         
     except Exception as e:
         return jsonify({'error': 'Failed to get status'}), 500
+
+@app.route('/health')
+def health_check():
+    """System health check endpoint"""
+    health_status = {
+        'status': 'healthy',
+        'timestamp': datetime.utcnow().isoformat(),
+        'services': {
+            'database': bool(db),
+            'ocr_engine': bool(ocr_engine),
+            'enhanced_processor': bool(enhanced_claim_processor)
+        },
+        'version': '2.0.0',
+        'engine': 'mistral_only'
+    }
+    
+    # Check if any critical services are down
+    critical_services = ['database', 'ocr_engine', 'enhanced_processor']
+    failed_services = [service for service in critical_services 
+                      if not health_status['services'][service]]
+    
+    if failed_services:
+        health_status['status'] = 'degraded'
+        health_status['issues'] = failed_services
+        return jsonify(health_status), 503
+    
+    return jsonify(health_status), 200
 
 @app.errorhandler(413)
 def too_large(e):

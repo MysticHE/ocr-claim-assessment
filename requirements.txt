@@ -1,11 +1,8 @@
 flask==3.0.0
-easyocr==1.7.0
 mistralai>=1.0.0
 supabase>=2.0.0
 gunicorn==21.2.0
-opencv-python-headless==4.9.0.80
 Pillow>=10.2.0
-numpy>=1.24.0,<2.0.0
 python-dotenv==1.0.0
 requests>=2.31.0
 werkzeug>=3.0.0
