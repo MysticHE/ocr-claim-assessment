@@ -1,8 +1,8 @@
 flask==3.0.0
 paddleocr==2.7.3
 easyocr==1.7.0
-mistralai==0.1.2
-supabase==1.0.4
+mistralai>=1.0.0
+supabase>=2.0.0
 gunicorn==21.2.0
 opencv-python-headless==4.9.0.80
 Pillow>=10.2.0
