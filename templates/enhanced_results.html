@@ -3,407 +3,630 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Enhanced Claim Processing Results</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" rel="stylesheet">
+    <title>Enhanced Claim Processing Results - OCR System</title>
+    
+    <!-- Custom CSS (matching your existing design system) -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/responsive.css') }}">
+    
+    <!-- Enhanced results specific styles -->
     <style>
-        .workflow-step {
+        /* Enhanced Results Specific Styles */
+        .enhanced-results-container {
+            padding: 2rem 0;
+        }
+        
+        .workflow-progress {
+            background: var(--surface-color);
+            border-radius: var(--radius-lg);
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            box-shadow: var(--shadow-md);
+            border: 1px solid var(--border-color);
+        }
+        
+        .workflow-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--text-color);
             margin-bottom: 1rem;
-            border-left: 4px solid #dee2e6;
-            padding-left: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
         }
-        .workflow-step.completed {
-            border-left-color: #28a745;
+        
+        .workflow-step {
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+            padding: 1rem 0;
+            border-bottom: 1px solid var(--border-color);
         }
-        .workflow-step.failed {
-            border-left-color: #dc3545;
+        
+        .workflow-step:last-child {
+            border-bottom: none;
         }
-        .workflow-step.skipped {
-            border-left-color: #ffc107;
+        
+        .step-indicator {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: 600;
+            flex-shrink: 0;
         }
-        .workflow-step.in_progress {
-            border-left-color: #007bff;
+        
+        .step-indicator.completed {
+            background: var(--success-color);
+            color: white;
         }
-        .confidence-bar {
-            height: 20px;
-            background-color: #e9ecef;
-            border-radius: 10px;
+        
+        .step-indicator.failed {
+            background: var(--error-color);
+            color: white;
+        }
+        
+        .step-indicator.skipped {
+            background: var(--warning-color);
+            color: white;
+        }
+        
+        .step-indicator.in_progress {
+            background: var(--primary-color);
+            color: white;
+        }
+        
+        .step-indicator.pending {
+            background: var(--border-color);
+            color: var(--text-secondary);
+        }
+        
+        .step-content {
+            flex: 1;
+        }
+        
+        .step-name {
+            font-weight: 600;
+            color: var(--text-color);
+            margin-bottom: 0.25rem;
+        }
+        
+        .step-description {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+        
+        .step-time {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            margin-top: 0.25rem;
+        }
+        
+        /* AI Analysis Results */
+        .ai-results-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin: 2rem 0;
+        }
+        
+        .ai-result-card {
+            background: var(--surface-color);
+            border-radius: var(--radius-lg);
+            padding: 1.5rem;
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--border-color);
+            transition: var(--transition);
+        }
+        
+        .ai-result-card:hover {
+            box-shadow: var(--shadow-md);
+        }
+        
+        .ai-result-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+        
+        .ai-result-title {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-color);
+        }
+        
+        .ai-badge {
+            background: var(--primary-color);
+            color: white;
+            font-size: 0.75rem;
+            padding: 0.25rem 0.5rem;
+            border-radius: var(--radius-sm);
+            font-weight: 500;
+        }
+        
+        .confidence-display {
+            margin: 1rem 0;
+        }
+        
+        .confidence-label {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--text-color);
+            margin-bottom: 0.5rem;
+        }
+        
+        .confidence-bar-container {
+            height: 8px;
+            background: var(--border-color);
+            border-radius: 4px;
             overflow: hidden;
         }
+        
         .confidence-fill {
             height: 100%;
-            transition: width 0.3s ease;
+            border-radius: 4px;
+            transition: width 0.5s ease;
         }
-        .confidence-excellent { background-color: #28a745; }
-        .confidence-good { background-color: #20c997; }
-        .confidence-fair { background-color: #ffc107; }
-        .confidence-poor { background-color: #fd7e14; }
-        .confidence-bad { background-color: #dc3545; }
-        .ai-badge {
-            font-size: 0.8em;
-            padding: 0.25rem 0.5rem;
+        
+        .confidence-excellent { background: var(--success-color); }
+        .confidence-good { background: #20c997; }
+        .confidence-fair { background: var(--warning-color); }
+        .confidence-poor { background: #fd7e14; }
+        .confidence-bad { background: var(--error-color); }
+        
+        .confidence-text {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--text-color);
+            margin-top: 0.25rem;
+            text-align: right;
         }
+        
+        /* Quality Metrics */
+        .quality-metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+        
         .quality-metric {
-            padding: 0.5rem;
-            margin: 0.25rem 0;
-            border-radius: 0.375rem;
-            background-color: #f8f9fa;
+            padding: 0.75rem;
+            background: var(--background-color);
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border-color);
+            text-align: center;
         }
+        
+        .quality-metric-value {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--text-color);
+            margin-bottom: 0.25rem;
+        }
+        
+        .quality-metric-label {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        
+        /* Data Extraction Display */
+        .extracted-data-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+        
         .extracted-field {
-            background-color: #e7f3ff;
-            padding: 0.5rem;
-            margin: 0.25rem 0;
-            border-radius: 0.375rem;
-            border-left: 3px solid #0066cc;
+            padding: 1rem;
+            background: var(--background-color);
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border-color);
+        }
+        
+        .field-label {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.5rem;
+        }
+        
+        .field-value {
+            font-weight: 600;
+            color: var(--text-color);
+        }
+        
+        /* Decision Summary */
+        .decision-summary {
+            background: var(--surface-color);
+            border-radius: var(--radius-lg);
+            padding: 2rem;
+            margin: 2rem 0;
+            box-shadow: var(--shadow-md);
+            border-left: 4px solid var(--primary-color);
+        }
+        
+        .decision-summary.approved {
+            border-left-color: var(--success-color);
+        }
+        
+        .decision-summary.rejected {
+            border-left-color: var(--error-color);
+        }
+        
+        .decision-summary.review {
+            border-left-color: var(--warning-color);
+        }
+        
+        .decision-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+        
+        .decision-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            border-radius: var(--radius-md);
+            font-size: 0.875rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        
+        .decision-status.approved {
+            background: rgba(22, 163, 74, 0.1);
+            color: var(--success-color);
+        }
+        
+        .decision-status.rejected {
+            background: rgba(220, 38, 38, 0.1);
+            color: var(--error-color);
+        }
+        
+        .decision-status.review {
+            background: rgba(217, 119, 6, 0.1);
+            color: var(--warning-color);
+        }
+        
+        .decision-reasons {
+            margin: 1rem 0;
+        }
+        
+        .reason-item {
+            padding: 0.5rem 0;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 0.875rem;
+            color: var(--text-color);
+        }
+        
+        .reason-item:last-child {
+            border-bottom: none;
+        }
+        
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .ai-results-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .extracted-data-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .quality-metrics {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .decision-header {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 1rem;
+            }
+            
+            .workflow-step {
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+            
+            .step-indicator {
+                align-self: flex-start;
+            }
+        }
+        
+        /* Print styles */
+        @media print {
+            .action-buttons {
+                display: none;
+            }
+            
+            .workflow-progress,
+            .ai-result-card,
+            .decision-summary {
+                box-shadow: none;
+                border: 1px solid #000;
+                page-break-inside: avoid;
+            }
         }
     </style>
 </head>
-<body>
-    <div class="container mt-4">
-        <div class="row">
-            <div class="col-md-12">
-                <div class="d-flex justify-content-between align-items-center mb-4">
-                    <h1 class="h3">
-                        <i class="bi bi-file-medical"></i>
-                        Enhanced Claim Analysis
-                    </h1>
-                    <a href="/" class="btn btn-outline-primary">
-                        <i class="bi bi-arrow-left"></i> Process Another Claim
-                    </a>
-                </div>
 
-                <!-- Alert for claim status -->
-                {% if claim.claim_status == 'approved' %}
-                <div class="alert alert-success" role="alert">
-                    <i class="bi bi-check-circle-fill"></i>
-                    <strong>Claim Approved!</strong> This claim has been automatically approved by our AI system.
-                </div>
-                {% elif claim.claim_status == 'rejected' %}
-                <div class="alert alert-danger" role="alert">
-                    <i class="bi bi-x-circle-fill"></i>
-                    <strong>Claim Rejected.</strong> This claim did not meet approval criteria.
-                </div>
-                {% elif claim.claim_status == 'review' %}
-                <div class="alert alert-warning" role="alert">
-                    <i class="bi bi-exclamation-triangle-fill"></i>
-                    <strong>Manual Review Required.</strong> This claim requires human review.
+<body>
+    <header>
+        <div class="container">
+            <div class="header-content">
+                <a href="{{ url_for('index') }}" class="logo">OCR Claim Assessment</a>
+                <nav>
+                    <ul class="nav-links">
+                        <li><a href="{{ url_for('index') }}">Upload New</a></li>
+                        <li><a href="#" onclick="window.print()">Print Results</a></li>
+                    </ul>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <div class="container enhanced-results-container">
+            <div class="page-title">
+                <h1>Enhanced AI Processing Results</h1>
+                <p class="page-subtitle">Comprehensive analysis with AI-powered insights</p>
+            </div>
+
+            <!-- Workflow Progress -->
+            <div class="workflow-progress">
+                <h3 class="workflow-title">
+                    <span>AI Processing Workflow</span>
+                    <span class="ai-badge">10-Step Pipeline</span>
+                </h3>
+                
+                {% if result.workflow_steps %}
+                    {% for step in result.workflow_steps %}
+                    <div class="workflow-step">
+                        <div class="step-indicator {{ step.status }}">
+                            {% if step.status == 'completed' %}✓
+                            {% elif step.status == 'failed' %}✗
+                            {% elif step.status == 'skipped' %}−
+                            {% elif step.status == 'in_progress' %}⋯
+                            {% else %}{{ loop.index }}
+                            {% endif %}
+                        </div>
+                        <div class="step-content">
+                            <div class="step-name">{{ step.name }}</div>
+                            <div class="step-description">{{ step.description }}</div>
+                            {% if step.processing_time %}
+                            <div class="step-time">Completed in {{ "%.2f"|format(step.processing_time) }}s</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% endif %}
+            </div>
+
+            <!-- AI Analysis Results Grid -->
+            <div class="ai-results-grid">
+                <!-- Document Classification -->
+                {% if result.document_classification %}
+                <div class="ai-result-card">
+                    <div class="ai-result-header">
+                        <h4 class="ai-result-title">Document Classification</h4>
+                        <span class="ai-badge">AI Powered</span>
+                    </div>
+                    
+                    <div class="detail-item">
+                        <div class="field-label">Document Type</div>
+                        <div class="field-value">{{ result.document_classification.document_type|title }}</div>
+                    </div>
+                    
+                    <div class="confidence-display">
+                        <div class="confidence-label">Classification Confidence</div>
+                        <div class="confidence-bar-container">
+                            <div class="confidence-fill confidence-{{ 'excellent' if result.document_classification.confidence >= 0.9 else 'good' if result.document_classification.confidence >= 0.7 else 'fair' if result.document_classification.confidence >= 0.5 else 'poor' }}" 
+                                 style="width: {{ (result.document_classification.confidence * 100)|round }}%"></div>
+                        </div>
+                        <div class="confidence-text">{{ (result.document_classification.confidence * 100)|round }}%</div>
+                    </div>
+                    
+                    {% if result.document_classification.features_detected %}
+                    <div class="detail-item mt-3">
+                        <div class="field-label">Key Features Detected</div>
+                        <div class="field-value">
+                            {% for feature in result.document_classification.features_detected[:3] %}
+                                <span class="badge badge-secondary me-1">{{ feature }}</span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
                 </div>
                 {% endif %}
 
-                <div class="row">
-                    <!-- Main Results Column -->
-                    <div class="col-md-8">
-                        <!-- Claim Summary -->
-                        <div class="card mb-4">
-                            <div class="card-header">
-                                <h5 class="card-title mb-0">
-                                    <i class="bi bi-clipboard-data"></i>
-                                    Claim Summary
-                                </h5>
-                            </div>
-                            <div class="card-body">
-                                <div class="row">
-                                    <div class="col-md-6">
-                                        <p><strong>Claim ID:</strong> {{ claim.id }}</p>
-                                        <p><strong>Status:</strong> 
-                                            <span class="badge bg-{% if claim.claim_status == 'approved' %}success{% elif claim.claim_status == 'rejected' %}danger{% else %}warning{% endif %}">
-                                                {{ claim.claim_status.title() }}
-                                            </span>
-                                        </p>
-                                        <p><strong>Amount:</strong> ${{ "%.2f"|format(claim.claim_amount or 0) }}</p>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <p><strong>Confidence Score:</strong></p>
-                                        <div class="confidence-bar mb-2">
-                                            <div class="confidence-fill confidence-{% if claim.confidence_score >= 0.9 %}excellent{% elif claim.confidence_score >= 0.7 %}good{% elif claim.confidence_score >= 0.5 %}fair{% elif claim.confidence_score >= 0.3 %}poor{% else %}bad{% endif %}" 
-                                                 style="width: {{ (claim.confidence_score * 100)|round }}%"></div>
-                                        </div>
-                                        <small class="text-muted">{{ (claim.confidence_score * 100)|round }}% confidence</small>
-                                    </div>
-                                </div>
-                            </div>
+                <!-- Quality Assessment -->
+                {% if result.quality_assessment %}
+                <div class="ai-result-card">
+                    <div class="ai-result-header">
+                        <h4 class="ai-result-title">Quality Assessment</h4>
+                        <span class="ai-badge">Computer Vision</span>
+                    </div>
+                    
+                    <div class="confidence-display">
+                        <div class="confidence-label">Overall Quality Score</div>
+                        <div class="confidence-bar-container">
+                            <div class="confidence-fill confidence-{{ 'excellent' if result.quality_assessment.quality_score.overall_score >= 0.9 else 'good' if result.quality_assessment.quality_score.overall_score >= 0.7 else 'fair' if result.quality_assessment.quality_score.overall_score >= 0.5 else 'poor' }}" 
+                                 style="width: {{ (result.quality_assessment.quality_score.overall_score * 100)|round }}%"></div>
                         </div>
-
-                        <!-- AI Workflow Progress -->
-                        {% if enhanced_data and enhanced_data.workflow_steps %}
-                        <div class="card mb-4">
-                            <div class="card-header">
-                                <h5 class="card-title mb-0">
-                                    <i class="bi bi-diagram-3"></i>
-                                    AI Processing Workflow
-                                </h5>
-                            </div>
-                            <div class="card-body">
-                                {% for step in enhanced_data.workflow_steps %}
-                                <div class="workflow-step {{ step.status }}">
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <div>
-                                            <h6 class="mb-1">
-                                                {% if step.status == 'completed' %}<i class="bi bi-check-circle-fill text-success"></i>
-                                                {% elif step.status == 'failed' %}<i class="bi bi-x-circle-fill text-danger"></i>
-                                                {% elif step.status == 'skipped' %}<i class="bi bi-dash-circle-fill text-warning"></i>
-                                                {% else %}<i class="bi bi-arrow-right-circle-fill text-primary"></i>
-                                                {% endif %}
-                                                {{ step.step_name.replace('_', ' ').title() }}
-                                                {% if step.ai_engine_used %}
-                                                <span class="badge bg-info ai-badge">{{ step.ai_engine_used }}</span>
-                                                {% endif %}
-                                            </h6>
-                                            {% if step.output_summary %}
-                                            <p class="mb-1 text-muted">{{ step.output_summary }}</p>
-                                            {% endif %}
-                                        </div>
-                                        <div class="text-end">
-                                            {% if step.confidence_score %}
-                                            <small class="text-muted">{{ (step.confidence_score * 100)|round }}%</small>
-                                            {% endif %}
-                                            {% if step.duration_ms %}
-                                            <br><small class="text-muted">{{ step.duration_ms }}ms</small>
-                                            {% endif %}
-                                        </div>
-                                    </div>
-                                    {% if step.issues_found %}
-                                    <div class="mt-2">
-                                        {% for issue in step.issues_found %}
-                                        <small class="badge bg-warning me-1">{{ issue }}</small>
-                                        {% endfor %}
-                                    </div>
-                                    {% endif %}
-                                </div>
-                                {% endfor %}
-                            </div>
+                        <div class="confidence-text">{{ (result.quality_assessment.quality_score.overall_score * 100)|round }}%</div>
+                    </div>
+                    
+                    <div class="quality-metrics">
+                        {% if result.quality_assessment.quality_score.readability_score %}
+                        <div class="quality-metric">
+                            <div class="quality-metric-value">{{ (result.quality_assessment.quality_score.readability_score * 100)|round }}%</div>
+                            <div class="quality-metric-label">Readability</div>
                         </div>
                         {% endif %}
-
-                        <!-- Extracted Data -->
-                        {% if enhanced_data and enhanced_data.extracted_data %}
-                        <div class="card mb-4">
-                            <div class="card-header">
-                                <h5 class="card-title mb-0">
-                                    <i class="bi bi-file-text"></i>
-                                    Extracted Information
-                                </h5>
-                            </div>
-                            <div class="card-body">
-                                <div class="row">
-                                    {% set extracted = enhanced_data.extracted_data %}
-                                    {% if extracted.patient_name %}
-                                    <div class="col-md-6">
-                                        <div class="extracted-field">
-                                            <strong>Patient Name:</strong> {{ extracted.patient_name }}
-                                        </div>
-                                    </div>
-                                    {% endif %}
-                                    {% if extracted.patient_id %}
-                                    <div class="col-md-6">
-                                        <div class="extracted-field">
-                                            <strong>Patient ID:</strong> {{ extracted.patient_id }}
-                                        </div>
-                                    </div>
-                                    {% endif %}
-                                    {% if extracted.policy_number %}
-                                    <div class="col-md-6">
-                                        <div class="extracted-field">
-                                            <strong>Policy Number:</strong> {{ extracted.policy_number }}
-                                        </div>
-                                    </div>
-                                    {% endif %}
-                                    {% if extracted.provider_name %}
-                                    <div class="col-md-6">
-                                        <div class="extracted-field">
-                                            <strong>Provider:</strong> {{ extracted.provider_name }}
-                                        </div>
-                                    </div>
-                                    {% endif %}
-                                    {% if extracted.total_amount %}
-                                    <div class="col-md-6">
-                                        <div class="extracted-field">
-                                            <strong>Amount:</strong> {{ extracted.currency }} ${{ "%.2f"|format(extracted.total_amount) }}
-                                        </div>
-                                    </div>
-                                    {% endif %}
-                                    {% if extracted.treatment_dates %}
-                                    <div class="col-md-6">
-                                        <div class="extracted-field">
-                                            <strong>Treatment Dates:</strong> 
-                                            {% for date in extracted.treatment_dates %}
-                                                <span class="badge bg-secondary">{{ date }}</span>
-                                            {% endfor %}
-                                        </div>
-                                    </div>
-                                    {% endif %}
-                                    {% if extracted.diagnosis_codes %}
-                                    <div class="col-md-12">
-                                        <div class="extracted-field">
-                                            <strong>Diagnosis Codes:</strong> 
-                                            {% for code in extracted.diagnosis_codes %}
-                                                <span class="badge bg-info">{{ code }}</span>
-                                            {% endfor %}
-                                        </div>
-                                    </div>
-                                    {% endif %}
-                                </div>
-                            </div>
+                        
+                        {% if result.quality_assessment.quality_score.clarity_score %}
+                        <div class="quality-metric">
+                            <div class="quality-metric-value">{{ (result.quality_assessment.quality_score.clarity_score * 100)|round }}%</div>
+                            <div class="quality-metric-label">Clarity</div>
                         </div>
                         {% endif %}
-
-                        <!-- Decision Reasoning -->
-                        {% if enhanced_data and enhanced_data.reasons %}
-                        <div class="card mb-4">
-                            <div class="card-header">
-                                <h5 class="card-title mb-0">
-                                    <i class="bi bi-lightbulb"></i>
-                                    Decision Reasoning
-                                </h5>
-                            </div>
-                            <div class="card-body">
-                                <ul class="list-unstyled">
-                                    {% for reason in enhanced_data.reasons %}
-                                    <li class="mb-2">
-                                        <i class="bi bi-arrow-right text-primary"></i>
-                                        {{ reason }}
-                                    </li>
-                                    {% endfor %}
-                                </ul>
-                                {% if enhanced_data.processing_notes %}
-                                <div class="mt-3 p-3 bg-light rounded">
-                                    <strong>Processing Notes:</strong> {{ enhanced_data.processing_notes }}
-                                </div>
-                                {% endif %}
-                            </div>
+                        
+                        {% if result.quality_assessment.quality_score.completeness_score %}
+                        <div class="quality-metric">
+                            <div class="quality-metric-value">{{ (result.quality_assessment.quality_score.completeness_score * 100)|round }}%</div>
+                            <div class="quality-metric-label">Completeness</div>
                         </div>
                         {% endif %}
                     </div>
+                    
+                    {% if result.quality_assessment.is_acceptable %}
+                    <div class="alert alert-success">
+                        <strong>Quality Status:</strong> Document meets quality standards for processing
+                    </div>
+                    {% else %}
+                    <div class="alert alert-warning">
+                        <strong>Quality Status:</strong> Document quality may affect processing accuracy
+                    </div>
+                    {% endif %}
+                </div>
+                {% endif %}
 
-                    <!-- Sidebar with AI Analysis -->
-                    <div class="col-md-4">
-                        <!-- Document Classification -->
-                        {% if enhanced_data and enhanced_data.document_classification %}
-                        <div class="card mb-4">
-                            <div class="card-header">
-                                <h6 class="card-title mb-0">
-                                    <i class="bi bi-tags"></i>
-                                    Document Classification
-                                </h6>
-                            </div>
-                            <div class="card-body">
-                                {% set doc_class = enhanced_data.document_classification %}
-                                <p><strong>Type:</strong> 
-                                    <span class="badge bg-primary">{{ doc_class.document_type.replace('_', ' ').title() }}</span>
-                                </p>
-                                <p><strong>Confidence:</strong> {{ (doc_class.confidence * 100)|round }}%</p>
-                                
-                                <div class="confidence-bar mb-3">
-                                    <div class="confidence-fill confidence-{% if doc_class.confidence >= 0.9 %}excellent{% elif doc_class.confidence >= 0.7 %}good{% elif doc_class.confidence >= 0.5 %}fair{% elif doc_class.confidence >= 0.3 %}poor{% else %}bad{% endif %}" 
-                                         style="width: {{ (doc_class.confidence * 100)|round }}%"></div>
-                                </div>
-                                
-                                {% if doc_class.reasoning %}
-                                <small><strong>Reasoning:</strong></small>
-                                <ul class="small mt-2 mb-0">
-                                    {% for reason in doc_class.reasoning[:3] %}
-                                    <li>{{ reason }}</li>
-                                    {% endfor %}
-                                </ul>
-                                {% endif %}
-                            </div>
+                <!-- Extracted Data -->
+                {% if result.extracted_data %}
+                <div class="ai-result-card">
+                    <div class="ai-result-header">
+                        <h4 class="ai-result-title">Extracted Data</h4>
+                        <span class="ai-badge">Smart Extraction</span>
+                    </div>
+                    
+                    <div class="extracted-data-grid">
+                        {% for key, value in result.extracted_data.items() %}
+                        <div class="extracted-field">
+                            <div class="field-label">{{ key|replace('_', ' ')|title }}</div>
+                            <div class="field-value">{{ value }}</div>
                         </div>
-                        {% endif %}
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
 
-                        <!-- Quality Assessment -->
-                        {% if enhanced_data and enhanced_data.quality_assessment %}
-                        <div class="card mb-4">
-                            <div class="card-header">
-                                <h6 class="card-title mb-0">
-                                    <i class="bi bi-shield-check"></i>
-                                    Quality Assessment
-                                </h6>
-                            </div>
-                            <div class="card-body">
-                                {% set quality = enhanced_data.quality_assessment %}
-                                {% set scores = quality.quality_score %}
-                                
-                                <div class="quality-metric">
-                                    <strong>Overall:</strong> {{ (scores.overall_score * 100)|round }}%
-                                    <div class="confidence-bar mt-1">
-                                        <div class="confidence-fill confidence-{% if scores.overall_score >= 0.8 %}excellent{% elif scores.overall_score >= 0.6 %}good{% elif scores.overall_score >= 0.4 %}fair{% else %}poor{% endif %}" 
-                                             style="width: {{ (scores.overall_score * 100)|round }}%"></div>
-                                    </div>
-                                </div>
-                                
-                                <div class="quality-metric">
-                                    <small><strong>Readability:</strong> {{ (scores.readability_score * 100)|round }}%</small>
-                                </div>
-                                <div class="quality-metric">
-                                    <small><strong>Clarity:</strong> {{ (scores.clarity_score * 100)|round }}%</small>
-                                </div>
-                                <div class="quality-metric">
-                                    <small><strong>Completeness:</strong> {{ (scores.completeness_score * 100)|round }}%</small>
-                                </div>
-                                
-                                {% if quality.issues_detected %}
-                                <div class="mt-3">
-                                    <small><strong>Issues Detected:</strong></small>
-                                    {% for issue in quality.issues_detected %}
-                                    <br><small class="badge bg-warning">{{ issue.replace('_', ' ').title() }}</small>
-                                    {% endfor %}
-                                </div>
-                                {% endif %}
-                            </div>
-                        </div>
-                        {% endif %}
+                <!-- Fraud Detection -->
+                {% if result.fraud_findings %}
+                <div class="ai-result-card">
+                    <div class="ai-result-header">
+                        <h4 class="ai-result-title">Fraud Detection</h4>
+                        <span class="ai-badge">Security Analysis</span>
+                    </div>
+                    
+                    {% if result.fraud_findings|length > 0 %}
+                    <div class="alert alert-warning">
+                        <strong>Findings Detected:</strong>
+                        <ul class="mt-2 mb-0">
+                            {% for finding in result.fraud_findings %}
+                            <li>{{ finding }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-success">
+                        <strong>No suspicious patterns detected</strong>
+                    </div>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
 
-                        <!-- Processing Statistics -->
-                        <div class="card mb-4">
-                            <div class="card-header">
-                                <h6 class="card-title mb-0">
-                                    <i class="bi bi-graph-up"></i>
-                                    Processing Stats
-                                </h6>
-                            </div>
-                            <div class="card-body">
-                                <p><small><strong>File Size:</strong> {{ (claim.file_size / 1024)|round(1) }} KB</small></p>
-                                <p><small><strong>Processing Time:</strong> 
-                                    {% if enhanced_data and enhanced_data.total_processing_time_ms %}
-                                        {{ enhanced_data.total_processing_time_ms }}ms
-                                    {% else %}
-                                        {{ claim.metadata.processing_time_ms or 0 }}ms
-                                    {% endif %}
-                                </small></p>
-                                <p><small><strong>Language Detected:</strong> {{ claim.language_detected or 'English' }}</small></p>
-                                {% if enhanced_data and enhanced_data.ai_engines_used %}
-                                <p><small><strong>AI Engines Used:</strong></small></p>
-                                {% for engine in enhanced_data.ai_engines_used %}
-                                    {% if engine %}
-                                    <span class="badge bg-info ai-badge">{{ engine }}</span>
-                                    {% endif %}
-                                {% endfor %}
-                                {% endif %}
-                            </div>
-                        </div>
-
-                        <!-- OCR Text Preview -->
-                        {% if ocr and ocr.extracted_text %}
-                        <div class="card">
-                            <div class="card-header">
-                                <h6 class="card-title mb-0">
-                                    <i class="bi bi-file-text"></i>
-                                    Extracted Text Preview
-                                </h6>
-                            </div>
-                            <div class="card-body">
-                                <div style="max-height: 200px; overflow-y: auto;">
-                                    <small class="text-muted">{{ ocr.extracted_text[:500] }}{% if ocr.extracted_text|length > 500 %}...{% endif %}</small>
-                                </div>
-                            </div>
-                        </div>
+            <!-- Decision Summary -->
+            <div class="decision-summary {{ result.status }}">
+                <div class="decision-header">
+                    <h3>Processing Decision</h3>
+                    <div class="decision-status {{ result.status }}">
+                        {% if result.status == 'approved' %}✓ Approved
+                        {% elif result.status == 'rejected' %}✗ Rejected  
+                        {% elif result.status == 'review' %}⚠ Requires Review
+                        {% else %}{{ result.status|title }}
                         {% endif %}
                     </div>
                 </div>
+                
+                <div class="confidence-display">
+                    <div class="confidence-label">Decision Confidence</div>
+                    <div class="confidence-bar-container">
+                        <div class="confidence-fill confidence-{{ 'excellent' if result.confidence >= 0.9 else 'good' if result.confidence >= 0.7 else 'fair' if result.confidence >= 0.5 else 'poor' }}" 
+                             style="width: {{ (result.confidence * 100)|round }}%"></div>
+                    </div>
+                    <div class="confidence-text">{{ (result.confidence * 100)|round }}%</div>
+                </div>
+                
+                {% if result.decision_reasons %}
+                <div class="decision-reasons">
+                    <h5>Decision Factors:</h5>
+                    {% for reason in result.decision_reasons %}
+                    <div class="reason-item">{{ reason }}</div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+                
+                <div class="detail-item">
+                    <div class="field-label">Processing Time</div>
+                    <div class="field-value">{{ "%.2f"|format(result.processing_time_ms / 1000) }} seconds</div>
+                </div>
+            </div>
+
+            <!-- Original OCR Text -->
+            {% if ocr_result and ocr_result.text %}
+            <div class="extracted-text">
+                <h4 class="extracted-text-title">
+                    <span>Original OCR Text</span>
+                    <span class="ai-badge">{{ ocr_result.engine|title }} OCR</span>
+                </h4>
+                <div class="extracted-text-content">{{ ocr_result.text }}</div>
+            </div>
+            {% endif %}
+
+            <!-- Action Buttons -->
+            <div class="action-buttons">
+                <a href="{{ url_for('index') }}" class="btn btn-primary">Process Another Document</a>
+                <button onclick="window.print()" class="btn btn-secondary">Print Results</button>
+                <button onclick="downloadResults()" class="btn btn-secondary">Download JSON</button>
             </div>
         </div>
-    </div>
+    </main>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <footer>
+        <div class="container">
+            <p>&copy; 2024 OCR Claim Assessment System. Enhanced with AI-powered analysis.</p>
+        </div>
+    </footer>
+
+    <script>
+        function downloadResults() {
+            const results = {{ result|tojson|safe }};
+            const blob = new Blob([JSON.stringify(results, null, 2)], {type: 'application/json'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'claim-analysis-results.json';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+    </script>
 </body>
 </html>

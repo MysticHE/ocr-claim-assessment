@@ -75,23 +75,14 @@ class EnhancedClaimProcessor:
     """Enhanced claim processor with AI-powered workflow"""
     
     def __init__(self):
-        """Initialize enhanced claim processor"""
+        """Initialize enhanced claim processor with lazy loading"""
         self.load_business_rules()
         
-        # Initialize AI engines
-        try:
-            self.document_classifier = DocumentClassifier()
-            self.classifier_available = True
-        except Exception as e:
-            print(f"Document classifier not available: {e}")
-            self.classifier_available = False
-        
-        try:
-            self.quality_assessor = DocumentQualityAssessor()
-            self.quality_assessor_available = True
-        except Exception as e:
-            print(f"Quality assessor not available: {e}")
-            self.quality_assessor_available = False
+        # Lazy loading for AI engines (initialize only when needed)
+        self._document_classifier = None
+        self._quality_assessor = None
+        self._classifier_initialization_attempted = False
+        self._assessor_initialization_attempted = False
         
         # Workflow steps definition
         self.workflow_steps = [
@@ -148,6 +139,42 @@ class EnhancedClaimProcessor:
                 r'\b(altered|modified|changed)\b'
             ]
         }
+    
+    @property
+    def document_classifier(self):
+        """Lazy-loaded document classifier"""
+        if self._document_classifier is None and not self._classifier_initialization_attempted:
+            self._classifier_initialization_attempted = True
+            try:
+                self._document_classifier = DocumentClassifier()
+                print("Document classifier initialized successfully")
+            except Exception as e:
+                print(f"Document classifier not available: {e}")
+                self._document_classifier = None
+        return self._document_classifier
+    
+    @property
+    def classifier_available(self):
+        """Check if document classifier is available"""
+        return self.document_classifier is not None
+    
+    @property
+    def quality_assessor(self):
+        """Lazy-loaded quality assessor"""
+        if self._quality_assessor is None and not self._assessor_initialization_attempted:
+            self._assessor_initialization_attempted = True
+            try:
+                self._quality_assessor = DocumentQualityAssessor()
+                print("Quality assessor initialized successfully")
+            except Exception as e:
+                print(f"Quality assessor not available: {e}")
+                self._quality_assessor = None
+        return self._quality_assessor
+    
+    @property
+    def quality_assessor_available(self):
+        """Check if quality assessor is available"""
+        return self.quality_assessor is not None
     
     def process_enhanced_claim(self, ocr_result: Dict[str, Any], 
                              image_path: Optional[str] = None) -> Dict[str, Any]:
