@@ -385,32 +385,6 @@ def get_claim_status(claim_id):
     except Exception as e:
         return jsonify({'error': 'Failed to get status'}), 500
 
-@app.route('/health')
-def health_check():
-    """System health check endpoint"""
-    health_status = {
-        'status': 'healthy',
-        'timestamp': datetime.utcnow().isoformat(),
-        'services': {
-            'database': bool(db),
-            'ocr_engine': bool(ocr_engine),
-            'enhanced_processor': bool(enhanced_claim_processor)
-        },
-        'version': '2.0.0',
-        'engine': 'mistral_only'
-    }
-    
-    # Check if any critical services are down
-    critical_services = ['database', 'ocr_engine', 'enhanced_processor']
-    failed_services = [service for service in critical_services 
-                      if not health_status['services'][service]]
-    
-    if failed_services:
-        health_status['status'] = 'degraded'
-        health_status['issues'] = failed_services
-        return jsonify(health_status), 503
-    
-    return jsonify(health_status), 200
 
 @app.errorhandler(413)
 def too_large(e):
