@@ -8,7 +8,7 @@ from datetime import datetime
 
 from config.settings import Config
 from database.supabase_client import SupabaseClient
-from ocr_engine.paddle_ocr import PaddleOCREngine
+from ocr_engine.mistral_ocr import HybridOCREngine
 from claims_engine.processor import ClaimProcessor
 
 # Initialize Flask app
@@ -21,7 +21,7 @@ Config.create_upload_folder()
 # Initialize services
 try:
     db = SupabaseClient()
-    ocr_engine = PaddleOCREngine()
+    ocr_engine = HybridOCREngine()
     claim_processor = ClaimProcessor()
 except Exception as e:
     print(f"Error initializing services: {e}")
