@@ -172,7 +172,7 @@
                     </div>
                     <div class="detail-item">
                         <div class="detail-label">AI-Powered Processing</div>
-                        <div class="detail-value">Advanced OCR with PaddleOCR and Mistral AI Integration</div>
+                        <div class="detail-value">Advanced OCR with Mistral AI (Primary) and EasyOCR Fallback</div>
                     </div>
                     <div class="detail-item">
                         <div class="detail-label">Automated Decisions</div>
@@ -366,7 +366,7 @@
                 if (progress < 30) {
                     document.getElementById('progressText').textContent = 'Uploading document...';
                 } else if (progress < 60) {
-                    document.getElementById('progressText').textContent = 'Processing OCR...';
+                    document.getElementById('progressText').textContent = 'Processing with Mistral AI OCR...';
                 } else {
                     document.getElementById('progressText').textContent = 'Analyzing claim data...';
                 }
