@@ -236,10 +236,34 @@ def upload_file():
             }), 400
         
         # Process claim logic with enhanced AI workflow
-        claim_decision = enhanced_claim_processor.process_enhanced_claim(ocr_results, filepath)
+        try:
+            print(f"🔧 Starting enhanced processing for claim {claim_id}")
+            claim_decision = enhanced_claim_processor.process_enhanced_claim(ocr_results, filepath)
+            print(f"✓ Enhanced processing completed. Success: {claim_decision.get('success', False)}")
+            print(f"   Data keys: {list(claim_decision.keys()) if claim_decision else 'None'}")
+        except Exception as e:
+            print(f"✗ Enhanced processing failed: {e}")
+            import traceback
+            traceback.print_exc()
+            # Fallback to basic processing
+            claim_decision = {
+                'success': False,
+                'status': 'review',
+                'confidence': 0.5,
+                'amount': 0,
+                'reasons': [f'Enhanced processing failed: {str(e)}'],
+                'processing_notes': 'Fallback to basic processing due to enhanced processing failure'
+            }
         
         # Calculate processing time
         processing_time = int((time.time() - start_time) * 1000)
+        
+        # Prepare enhanced results for database storage
+        enhanced_results = claim_decision if claim_decision.get('success', False) else None
+        
+        print(f"💾 Storing enhanced results for claim {claim_id}:")
+        print(f"   Enhanced results available: {enhanced_results is not None}")
+        print(f"   Claim decision success: {claim_decision.get('success', False)}")
         
         # Update claim with enhanced results
         db.update_claim_status(
@@ -252,7 +276,7 @@ def upload_file():
                 'processing_time_ms': processing_time,
                 'claim_amount': claim_decision.get('amount', 0),
                 'decision_reasons': claim_decision.get('reasons', []),
-                'enhanced_results': claim_decision if claim_decision.get('success', False) else None
+                'enhanced_results': enhanced_results
             }
         )
         

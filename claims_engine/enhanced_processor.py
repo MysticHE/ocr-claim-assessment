@@ -146,10 +146,13 @@ class EnhancedClaimProcessor:
         if self._document_classifier is None and not self._classifier_initialization_attempted:
             self._classifier_initialization_attempted = True
             try:
+                print("🔧 Initializing document classifier...")
                 self._document_classifier = DocumentClassifier()
-                print("Document classifier initialized successfully")
+                print("✓ Document classifier initialized successfully")
             except Exception as e:
-                print(f"Document classifier not available: {e}")
+                print(f"✗ Document classifier not available: {e}")
+                import traceback
+                traceback.print_exc()
                 self._document_classifier = None
         return self._document_classifier
     
@@ -164,10 +167,13 @@ class EnhancedClaimProcessor:
         if self._quality_assessor is None and not self._assessor_initialization_attempted:
             self._assessor_initialization_attempted = True
             try:
+                print("🔧 Initializing quality assessor...")
                 self._quality_assessor = DocumentQualityAssessor()
-                print("Quality assessor initialized successfully")
+                print("✓ Quality assessor initialized successfully")
             except Exception as e:
-                print(f"Quality assessor not available: {e}")
+                print(f"✗ Quality assessor not available: {e}")
+                import traceback
+                traceback.print_exc()
                 self._quality_assessor = None
         return self._quality_assessor
     
@@ -180,6 +186,12 @@ class EnhancedClaimProcessor:
                              image_path: Optional[str] = None) -> Dict[str, Any]:
         """Main enhanced claim processing workflow"""
         start_time = time.time()
+        
+        print(f"🚀 Starting enhanced claim processing workflow")
+        print(f"   OCR result keys: {list(ocr_result.keys()) if ocr_result else 'None'}")
+        print(f"   Image path provided: {image_path is not None}")
+        print(f"   Classifier available: {self.classifier_available}")
+        print(f"   Quality assessor available: {self.quality_assessor_available}")
         
         # Initialize workflow tracking
         workflow_steps = []
@@ -326,6 +338,12 @@ class EnhancedClaimProcessor:
             
             # Calculate total processing time
             total_processing_time = int((time.time() - start_time) * 1000)
+            
+            print(f"✅ Enhanced processing workflow completed successfully")
+            print(f"   Total processing time: {total_processing_time}ms")
+            print(f"   Workflow steps completed: {len([s for s in workflow_steps if s.status == 'completed'])}/{len(workflow_steps)}")
+            print(f"   Decision status: {decision.status.value}")
+            print(f"   Decision confidence: {decision.confidence}")
             
             # Compile results
             return {
