@@ -101,6 +101,8 @@ class SupabaseClient:
                         new_metadata['processing_time_ms'] = additional_data['processing_time_ms']
                     if 'decision_reasons' in additional_data:
                         new_metadata['decision_reasons'] = additional_data['decision_reasons']
+                    if 'enhanced_results' in additional_data:
+                        new_metadata['enhanced_results'] = additional_data['enhanced_results']
                     
                     update_data['metadata'] = new_metadata
             
