@@ -1,15 +1,19 @@
 import os
 import time
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any, Optional, TYPE_CHECKING
 import numpy as np
 from PIL import Image
 import cv2
+
+if TYPE_CHECKING:
+    from paddleocr import PaddleOCR
 
 try:
     from paddleocr import PaddleOCR
     PADDLE_OCR_AVAILABLE = True
 except ImportError:
     PADDLE_OCR_AVAILABLE = False
+    PaddleOCR = None  # For runtime use when not available
     print("PaddleOCR not available. Install with: pip install paddleocr")
 
 from config.settings import Config
