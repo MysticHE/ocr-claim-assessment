@@ -237,12 +237,12 @@ def upload_file():
         
         # Process claim logic with enhanced AI workflow
         try:
-            print(f"🔧 Starting enhanced processing for claim {claim_id}")
+            print(f"Starting enhanced processing for claim {claim_id}")
             claim_decision = enhanced_claim_processor.process_enhanced_claim(ocr_results, filepath)
-            print(f"✓ Enhanced processing completed. Success: {claim_decision.get('success', False)}")
+            print(f"Enhanced processing completed. Success: {claim_decision.get('success', False)}")
             print(f"   Data keys: {list(claim_decision.keys()) if claim_decision else 'None'}")
         except Exception as e:
-            print(f"✗ Enhanced processing failed: {e}")
+            print(f"Enhanced processing failed: {e}")
             import traceback
             traceback.print_exc()
             # Fallback to basic processing
@@ -261,7 +261,7 @@ def upload_file():
         # Prepare enhanced results for database storage
         enhanced_results = claim_decision if claim_decision.get('success', False) else None
         
-        print(f"💾 Storing enhanced results for claim {claim_id}:")
+        print(f"Storing enhanced results for claim {claim_id}:")
         print(f"   Enhanced results available: {enhanced_results is not None}")
         print(f"   Claim decision success: {claim_decision.get('success', False)}")
         
