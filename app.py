@@ -184,13 +184,13 @@ def upload_file():
             
             # Return user-friendly error message based on error type
             if error_type == 'service_unavailable':
-                error_message = "OCR service is temporarily unavailable. Please ensure you have a valid Mistral API key configured and try again."
+                error_message = "OCR service is temporarily unavailable. Please ensure you have a valid Mistral API key configured. Check service status at /health endpoint."
             elif error_type == 'file_not_found':
                 error_message = "The uploaded file could not be processed. Please try uploading the file again."
             elif error_type == 'api_error':
-                error_message = "There was an issue connecting to the OCR service. Please check your internet connection and try again."
+                error_message = "There was an issue connecting to the OCR service. Please check your internet connection and Mistral API key. Check service status at /health endpoint."
             else:
-                error_message = f"OCR processing failed: {error_msg}"
+                error_message = f"OCR processing failed: {error_msg}. Check service status at /health endpoint."
             
             return jsonify({
                 'success': False,
@@ -381,6 +381,72 @@ def too_large(e):
         'success': False,
         'error': f'File too large. Maximum size: {Config.MAX_FILE_SIZE // (1024*1024)}MB'
     }), 413
+
+@app.route('/health')
+def health_check():
+    """Health check endpoint for monitoring OCR service status"""
+    try:
+        health_status = {
+            'status': 'healthy',
+            'timestamp': time.time(),
+            'services': {}
+        }
+        
+        # Check database connection
+        if db:
+            try:
+                # Test database connection with a simple query
+                # This will fail if database is not accessible
+                db.client.table('claims').select('id').limit(1).execute()
+                health_status['services']['database'] = {
+                    'status': 'healthy',
+                    'message': 'Database connection successful'
+                }
+            except Exception as e:
+                health_status['status'] = 'unhealthy'
+                health_status['services']['database'] = {
+                    'status': 'unhealthy',
+                    'error': str(e)
+                }
+        else:
+            health_status['status'] = 'unhealthy'
+            health_status['services']['database'] = {
+                'status': 'unhealthy',
+                'error': 'Database client not initialized'
+            }
+        
+        # Check OCR engine
+        if ocr_engine:
+            ocr_health = ocr_engine.health_check()
+            health_status['services']['ocr'] = ocr_health
+            if ocr_health['status'] != 'healthy':
+                health_status['status'] = 'unhealthy'
+        else:
+            health_status['status'] = 'unhealthy'
+            health_status['services']['ocr'] = {
+                'status': 'unhealthy',
+                'error': 'OCR engine not initialized'
+            }
+        
+        # Check processors
+        health_status['services']['claim_processor'] = {
+            'status': 'healthy' if claim_processor else 'unhealthy',
+            'initialized': bool(claim_processor)
+        }
+        
+        health_status['services']['enhanced_processor'] = {
+            'status': 'healthy' if enhanced_claim_processor else 'unhealthy',
+            'initialized': bool(enhanced_claim_processor)
+        }
+        
+        return jsonify(health_status), 200 if health_status['status'] == 'healthy' else 503
+        
+    except Exception as e:
+        return jsonify({
+            'status': 'unhealthy',
+            'error': str(e),
+            'timestamp': time.time()
+        }), 503
 
 @app.errorhandler(404)
 def not_found(e):

@@ -253,6 +253,51 @@ Format your response as clean, readable text. If there are multiple sections, se
                 'engine': 'mistral',
                 'error_type': 'processing_error'
             }
+    
+    def health_check(self) -> Dict[str, Any]:
+        """Perform health check on the OCR engine"""
+        try:
+            # Test Mistral AI connection with a simple request
+            from PIL import Image
+            import tempfile
+            
+            # Create a simple test image with text
+            test_image = Image.new('RGB', (200, 100), color='white')
+            from PIL import ImageDraw, ImageFont
+            draw = ImageDraw.Draw(test_image)
+            draw.text((10, 30), "TEST", fill='black')
+            
+            with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as tmp_file:
+                test_image.save(tmp_file.name)
+                
+                start_time = time.time()
+                
+                # Test the connection
+                result = self.extract_text_with_mistral(tmp_file.name, ['en'])
+                
+                response_time = int((time.time() - start_time) * 1000)
+                
+                # Clean up test image
+                os.unlink(tmp_file.name)
+                
+                return {
+                    'status': 'healthy' if result.get('success', False) else 'unhealthy',
+                    'mistral_available': self.mistral_available,
+                    'api_key_configured': bool(self.api_key),
+                    'response_time_ms': response_time,
+                    'test_result': result.get('success', False),
+                    'error': result.get('error') if not result.get('success', False) else None,
+                    'timestamp': time.time()
+                }
+                
+        except Exception as e:
+            return {
+                'status': 'unhealthy',
+                'mistral_available': self.mistral_available,
+                'api_key_configured': bool(self.api_key),
+                'error': str(e),
+                'timestamp': time.time()
+            }
 
 # Alias for backward compatibility
 StreamlinedOCREngine = MistralOnlyOCREngine
