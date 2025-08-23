@@ -1,0 +1,33 @@
+services:
+  - type: web
+    name: ocr-claim-assessment
+    env: python
+    plan: starter
+    region: singapore
+    buildCommand: |
+      pip install --upgrade pip
+      pip install -r requirements.txt
+    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT --workers 2 --timeout 120
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.9.16"
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY  
+        sync: false
+      - key: SUPABASE_SERVICE_KEY
+        sync: false
+      - key: MISTRAL_API_KEY
+        sync: false
+      - key: FLASK_SECRET_KEY
+        sync: false
+      - key: SUPPORTED_LANGUAGES
+        value: "en,ch_sim,ms,ta,korean,japan,fr,de,es,it,pt,ru"
+      - key: MAX_FILE_SIZE
+        value: "16777216"
+      - key: UPLOAD_FOLDER
+        value: "/tmp/uploads"
+      - key: DEBUG
+        value: "False"
+      - key: ENVIRONMENT
+        value: "production"

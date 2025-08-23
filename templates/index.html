@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OCR Claim Assessment System</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/responsive.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
+</head>
+<body>
+    <header>
+        <div class="container">
+            <div class="header-content">
+                <a href="{{ url_for('index') }}" class="logo">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    OCR Claim Assessment
+                </a>
+                <nav>
+                    <ul class="nav-links">
+                        <li><a href="#features">Features</a></li>
+                        <li><a href="#about">About</a></li>
+                    </ul>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <div class="container">
+            <div class="page-title">
+                <h1>Multi-Language OCR Claim Processing</h1>
+                <p class="page-subtitle">
+                    Upload your claim documents for automated text extraction and processing. 
+                    Supports English, Chinese, Malay, Tamil, Korean, and many other languages.
+                </p>
+            </div>
+
+            <!-- Flash Messages -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <div class="flash-messages">
+                        {% for category, message in messages %}
+                            <div class="alert alert-{{ 'error' if category == 'error' else 'info' }}">
+                                {{ message }}
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
+
+            <!-- Main Upload Form -->
+            <div class="card">
+                <div class="card-body">
+                    <form id="uploadForm" enctype="multipart/form-data" method="post" action="{{ url_for('upload_file') }}">
+                        
+                        <!-- File Upload Area -->
+                        <div class="upload-area" id="uploadArea">
+                            <div class="upload-icon">
+                                <svg width="64" height="64" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M7 18a4.6 4.4 0 0 1 0 -9a5 4.5 0 0 1 11 2h1a3.5 3.5 0 0 1 0 7h-12"/>
+                                    <path d="M9 15l3 -3l3 3"/>
+                                    <path d="M12 12l0 9"/>
+                                </svg>
+                            </div>
+                            <div class="upload-text">Drop your claim document here</div>
+                            <div class="upload-subtext">or click to browse files</div>
+                            <input type="file" 
+                                   id="fileInput" 
+                                   name="file" 
+                                   accept=".pdf,.png,.jpg,.jpeg,.tiff,.bmp" 
+                                   style="display: none;">
+                            <button type="button" class="btn btn-primary upload-button" onclick="document.getElementById('fileInput').click();">
+                                Choose File
+                            </button>
+                            <div class="file-requirements">
+                                Supported formats: PDF, PNG, JPG, JPEG, TIFF, BMP<br>
+                                Maximum file size: {{ (max_file_size / (1024*1024)) | round(1) }}MB
+                            </div>
+                        </div>
+
+                        <!-- File Preview -->
+                        <div id="filePreview" class="file-preview hidden">
+                            <div class="file-preview-icon">
+                                <svg width="40" height="40" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                    <path d="m14,2 l6,6"/>
+                                    <path d="m16,13 l-8,0"/>
+                                    <path d="m16,17 l-8,0"/>
+                                    <path d="m10,9 l0,0"/>
+                                </svg>
+                            </div>
+                            <div class="file-preview-info">
+                                <div class="file-preview-name" id="fileName"></div>
+                                <div class="file-preview-size" id="fileSize"></div>
+                            </div>
+                            <div class="file-preview-remove" onclick="removeFile()">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="m18 6 -12 12"/>
+                                    <path d="m6 6 12 12"/>
+                                </svg>
+                            </div>
+                        </div>
+
+                        <!-- Language Selection -->
+                        <div class="language-selector">
+                            <div class="language-selector-title">
+                                Select Languages for OCR Processing
+                            </div>
+                            <div class="language-grid">
+                                {% for code, name in languages.items() %}
+                                <label class="language-btn" for="lang_{{ code }}">
+                                    <input type="checkbox" 
+                                           id="lang_{{ code }}" 
+                                           name="languages" 
+                                           value="{{ code }}"
+                                           {% if code == 'en' %}checked{% endif %}>
+                                    <span class="checkmark">✓</span>
+                                    {{ name }}
+                                </label>
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                        <!-- Submit Button -->
+                        <div class="action-buttons">
+                            <button type="submit" class="btn btn-primary btn-lg" id="submitBtn" disabled>
+                                <span class="btn-text">Process Document</span>
+                                <span class="spinner hidden" id="submitSpinner"></span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Processing Status -->
+            <div class="processing-status hidden" id="processingStatus">
+                <div class="processing-icon">
+                    <div class="spinner spinner-lg"></div>
+                </div>
+                <div class="processing-title">Processing Your Document</div>
+                <div class="processing-subtitle">This may take a few moments depending on document complexity...</div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+                </div>
+                <div class="progress-text" id="progressText">Initializing...</div>
+            </div>
+
+            <!-- Error Display -->
+            <div class="error-display hidden" id="errorDisplay">
+                <div class="error-icon">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="12" cy="12" r="10"/>
+                        <line x1="15" y1="9" x2="9" y2="15"/>
+                        <line x1="9" y1="9" x2="15" y2="15"/>
+                    </svg>
+                </div>
+                <div class="error-text" id="errorText"></div>
+            </div>
+
+            <!-- Features Section -->
+            <div id="features" class="mt-8">
+                <h2 class="text-center mb-6">Key Features</h2>
+                <div class="claim-details">
+                    <div class="detail-item">
+                        <div class="detail-label">Multi-Language Support</div>
+                        <div class="detail-value">80+ Languages Including English, Chinese, Malay, Tamil, Korean</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">AI-Powered Processing</div>
+                        <div class="detail-value">Advanced OCR with PaddleOCR and Mistral AI Integration</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Automated Decisions</div>
+                        <div class="detail-value">Smart Claim Assessment with Business Rule Engine</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Secure Processing</div>
+                        <div class="detail-value">Enterprise-Grade Security and Data Protection</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2024 OCR Claim Assessment System. Built with advanced AI technology for accurate document processing.</p>
+        </div>
+    </footer>
+
+    <!-- Toast Container -->
+    <div id="toastContainer"></div>
+
+    <!-- JavaScript -->
+    <script>
+        // Global variables
+        let selectedFile = null;
+        let uploadForm = document.getElementById('uploadForm');
+        let uploadArea = document.getElementById('uploadArea');
+        let fileInput = document.getElementById('fileInput');
+        let filePreview = document.getElementById('filePreview');
+        let submitBtn = document.getElementById('submitBtn');
+        let processingStatus = document.getElementById('processingStatus');
+        let errorDisplay = document.getElementById('errorDisplay');
+
+        // File upload handling
+        uploadArea.addEventListener('click', () => fileInput.click());
+        uploadArea.addEventListener('dragover', handleDragOver);
+        uploadArea.addEventListener('drop', handleDrop);
+        uploadArea.addEventListener('dragleave', handleDragLeave);
+        fileInput.addEventListener('change', handleFileSelect);
+
+        function handleDragOver(e) {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        }
+
+        function handleDragLeave(e) {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+        }
+
+        function handleDrop(e) {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFile(files[0]);
+            }
+        }
+
+        function handleFileSelect(e) {
+            const files = e.target.files;
+            if (files.length > 0) {
+                handleFile(files[0]);
+            }
+        }
+
+        function handleFile(file) {
+            // Validate file size
+            const maxSize = {{ max_file_size }};
+            if (file.size > maxSize) {
+                showError(`File too large. Maximum size: ${Math.round(maxSize / (1024*1024))}MB`);
+                return;
+            }
+
+            // Validate file type
+            const allowedTypes = ['application/pdf', 'image/png', 'image/jpeg', 'image/jpg', 'image/tiff', 'image/bmp'];
+            if (!allowedTypes.includes(file.type)) {
+                showError('Invalid file type. Please upload PDF, PNG, JPG, JPEG, TIFF, or BMP files.');
+                return;
+            }
+
+            selectedFile = file;
+            showFilePreview(file);
+            submitBtn.disabled = false;
+            hideError();
+        }
+
+        function showFilePreview(file) {
+            document.getElementById('fileName').textContent = file.name;
+            document.getElementById('fileSize').textContent = formatFileSize(file.size);
+            filePreview.classList.remove('hidden');
+        }
+
+        function removeFile() {
+            selectedFile = null;
+            fileInput.value = '';
+            filePreview.classList.add('hidden');
+            submitBtn.disabled = true;
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        // Language selection handling
+        document.querySelectorAll('input[name="languages"]').forEach(checkbox => {
+            checkbox.addEventListener('change', function() {
+                const label = this.closest('.language-btn');
+                if (this.checked) {
+                    label.classList.add('active');
+                } else {
+                    label.classList.remove('active');
+                }
+            });
+
+            // Initialize active state
+            if (checkbox.checked) {
+                checkbox.closest('.language-btn').classList.add('active');
+            }
+        });
+
+        // Form submission
+        uploadForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            if (!selectedFile) {
+                showError('Please select a file to upload.');
+                return;
+            }
+
+            // Check if at least one language is selected
+            const selectedLanguages = document.querySelectorAll('input[name="languages"]:checked');
+            if (selectedLanguages.length === 0) {
+                showError('Please select at least one language for OCR processing.');
+                return;
+            }
+
+            // Show processing status
+            showProcessing();
+            
+            // Prepare form data
+            const formData = new FormData(this);
+            
+            // Submit form
+            fetch(this.action, {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Redirect to results page
+                    window.location.href = data.redirect_url;
+                } else {
+                    hideProcessing();
+                    showError(data.error || 'An error occurred during processing.');
+                }
+            })
+            .catch(error => {
+                hideProcessing();
+                showError('Network error. Please check your connection and try again.');
+                console.error('Error:', error);
+            });
+        });
+
+        // Processing status management
+        function showProcessing() {
+            uploadForm.classList.add('hidden');
+            processingStatus.classList.remove('hidden');
+            hideError();
+            
+            // Simulate progress
+            let progress = 0;
+            const progressInterval = setInterval(() => {
+                progress += Math.random() * 15;
+                if (progress > 90) {
+                    progress = 90;
+                    clearInterval(progressInterval);
+                }
+                
+                document.getElementById('progressFill').style.width = progress + '%';
+                
+                // Update progress text
+                if (progress < 30) {
+                    document.getElementById('progressText').textContent = 'Uploading document...';
+                } else if (progress < 60) {
+                    document.getElementById('progressText').textContent = 'Processing OCR...';
+                } else {
+                    document.getElementById('progressText').textContent = 'Analyzing claim data...';
+                }
+            }, 500);
+        }
+
+        function hideProcessing() {
+            processingStatus.classList.add('hidden');
+            uploadForm.classList.remove('hidden');
+        }
+
+        // Error handling
+        function showError(message) {
+            document.getElementById('errorText').textContent = message;
+            errorDisplay.classList.remove('hidden');
+        }
+
+        function hideError() {
+            errorDisplay.classList.add('hidden');
+        }
+
+        // Toast notifications
+        function showToast(message, type = 'info') {
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+            
+            document.getElementById('toastContainer').appendChild(toast);
+            
+            setTimeout(() => {
+                toast.remove();
+            }, 5000);
+        }
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('OCR Claim Assessment System loaded');
+        });
+    </script>
+</body>
+</html>
