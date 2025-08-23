@@ -19,23 +19,43 @@ app.config.from_object(Config)
 # Create upload folder
 Config.create_upload_folder()
 
+# Print startup information
+print("🚀 Starting Enhanced OCR Claim Processing System...")
+print(f"   Environment: {os.environ.get('RENDER_SERVICE_NAME', 'Local')}")
+print(f"   Python: {os.sys.version}")
+
+# Check required environment variables
+required_env_vars = ['MISTRAL_API_KEY', 'SUPABASE_URL', 'SUPABASE_SERVICE_KEY']
+missing_vars = []
+for var in required_env_vars:
+    if not os.environ.get(var):
+        missing_vars.append(var)
+
+if missing_vars:
+    print(f"⚠️  Missing required environment variables: {', '.join(missing_vars)}")
+    print("   Application will run in limited mode.")
+
 # Initialize services with proper error handling
 db = None
 ocr_engine = None
 claim_processor = None
 enhanced_claim_processor = None
 
+print("\n🔧 Initializing services...")
+
 try:
     db = SupabaseClient()
     print("✓ Database client initialized")
 except Exception as e:
     print(f"✗ Database initialization failed: {e}")
+    db = None
 
 try:
     ocr_engine = MistralOnlyOCREngine()
     print("✓ Mistral OCR engine initialized")
 except Exception as e:
     print(f"✗ OCR engine initialization failed: {e}")
+    print(f"   Error type: {type(e).__name__}")
     ocr_engine = None
 
 try:
@@ -43,12 +63,14 @@ try:
     print("✓ Claim processor initialized")
 except Exception as e:
     print(f"✗ Claim processor initialization failed: {e}")
+    claim_processor = None
 
 try:
     enhanced_claim_processor = EnhancedClaimProcessor()
     print("✓ Enhanced claim processor initialized")
 except Exception as e:
     print(f"✗ Enhanced claim processor initialization failed: {e}")
+    enhanced_claim_processor = None
 
 # Service availability checks
 def check_services():
@@ -72,6 +94,21 @@ def check_services():
 
 # Check services on startup
 services_ready = check_services()
+
+# Startup summary
+print(f"\n📊 Startup Summary:")
+print(f"   Services Ready: {services_ready}")
+print(f"   Database: {'✓' if db else '✗'}")
+print(f"   OCR Engine: {'✓' if ocr_engine else '✗'}")
+print(f"   Claim Processor: {'✓' if claim_processor else '✗'}")
+print(f"   Enhanced Processor: {'✓' if enhanced_claim_processor else '✗'}")
+
+if not services_ready:
+    print("\n⚠️  Some services failed to initialize, but application will continue.")
+    print("   Check /health endpoint for detailed status.")
+
+print(f"\n🌐 Application starting on port {os.environ.get('PORT', '5000')}...")
+print("✅ Startup complete - Ready for requests")
 
 def allowed_file(filename):
     """Check if file extension is allowed"""

@@ -20,20 +20,26 @@ class MistralOnlyOCREngine:
     def __init__(self):
         """Initialize Mistral-only OCR engine"""
         self.api_key = Config.MISTRAL_API_KEY
+        self.client = None
         
         if not MISTRAL_AVAILABLE:
-            raise ImportError("Mistral AI is not installed. Please install with: pip install mistralai")
+            print("⚠️  Mistral AI library not available")
+            self.mistral_available = False
+            return
         
         if not self.api_key:
-            raise ValueError("MISTRAL_API_KEY environment variable is required")
+            print("⚠️  MISTRAL_API_KEY environment variable not set")
+            self.mistral_available = False
+            return
         
         try:
             self.client = Mistral(api_key=self.api_key)
             self.mistral_available = True
+            print("✓ Mistral client initialized successfully")
         except Exception as e:
-            print(f"Failed to initialize Mistral client: {e}")
+            print(f"⚠️  Failed to initialize Mistral client: {e}")
             self.mistral_available = False
-            raise ConnectionError(f"Failed to initialize Mistral client: {str(e)}")
+            self.client = None
     
     def encode_image_to_base64(self, image_path: str) -> str:
         """Encode image to base64 string for Mistral API"""
