@@ -376,6 +376,15 @@ def view_enhanced_results(claim_id):
         enhanced_data = None
         if claim_data.get('metadata') and isinstance(claim_data.get('metadata'), dict):
             enhanced_data = claim_data.get('metadata').get('enhanced_results')
+            
+        # Debug: Show what we're retrieving from database
+        print(f"Retrieving enhanced results for claim {claim_id}:")
+        print(f"   Claim data keys: {list(claim_data.keys()) if claim_data else 'None'}")
+        print(f"   Metadata type: {type(claim_data.get('metadata'))}")
+        print(f"   Metadata keys: {list(claim_data.get('metadata').keys()) if claim_data.get('metadata') else 'None'}")
+        print(f"   Enhanced data available: {enhanced_data is not None}")
+        if enhanced_data:
+            print(f"   Enhanced data keys: {list(enhanced_data.keys()) if isinstance(enhanced_data, dict) else 'Not a dict'}")
         
         # Structure data as expected by template
         result = {
@@ -404,6 +413,13 @@ def view_enhanced_results(claim_id):
             'metadata': claim_data.get('metadata', {}),
             'enhanced_data_available': enhanced_data is not None
         }
+        
+        # Debug: Show what we're sending to template
+        print(f"Sending to template for claim {claim_id}:")
+        print(f"   Result enhanced_data_available: {result['enhanced_data_available']}")
+        print(f"   Result workflow_steps count: {len(result['workflow_steps'])}")
+        print(f"   Result document_classification: {bool(result['document_classification'])}")
+        print(f"   Result quality_assessment: {bool(result['quality_assessment'])}")
         
         return render_template('enhanced_results.html', 
                              result=result,
