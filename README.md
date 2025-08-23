@@ -68,7 +68,7 @@ ocr-claim-assessment/
 ## Usage
 
 1. **Upload Document**
-   - Drag and drop or select file (PNG, JPG, JPEG, GIF, WebP)
+   - Drag and drop or select file (PDF, PNG, JPG, JPEG, GIF, WebP, TIFF, BMP)
    - Maximum file size: 16MB
 
 2. **Select Languages**

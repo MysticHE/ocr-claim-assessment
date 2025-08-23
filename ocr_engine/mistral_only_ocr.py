@@ -23,12 +23,12 @@ class MistralOnlyOCREngine:
         self.client = None
         
         if not MISTRAL_AVAILABLE:
-            print("⚠️  Mistral AI library not available")
+            print("Warning: Mistral AI library not available")
             self.mistral_available = False
             return
         
         if not self.api_key:
-            print("⚠️  MISTRAL_API_KEY environment variable not set")
+            print("Warning: MISTRAL_API_KEY environment variable not set")
             self.mistral_available = False
             return
         
@@ -40,7 +40,7 @@ class MistralOnlyOCREngine:
             # Test API connection
             self._test_api_connection()
         except Exception as e:
-            print(f"⚠️  Failed to initialize Mistral client: {e}")
+            print(f"Warning: Failed to initialize Mistral client: {e}")
             self.mistral_available = False
             self.client = None
     
@@ -51,7 +51,7 @@ class MistralOnlyOCREngine:
             if self.client and self.api_key:
                 print("✓ Mistral API connection test passed")
         except Exception as e:
-            print(f"⚠️  Mistral API connection test failed: {e}")
+            print(f"Warning: Mistral API connection test failed: {e}")
             self.mistral_available = False
     
     def encode_image_to_base64(self, image_path: str) -> str:
@@ -77,6 +77,17 @@ class MistralOnlyOCREngine:
                 
         except Exception as e:
             raise ValueError(f"Error encoding image: {str(e)}")
+    
+    def _encode_pdf_to_base64(self, pdf_path: str) -> str:
+        """Encode PDF file to base64 string for Mistral OCR API"""
+        try:
+            with open(pdf_path, 'rb') as pdf_file:
+                pdf_data = pdf_file.read()
+                pdf_base64 = base64.b64encode(pdf_data).decode('utf-8')
+                return f"data:application/pdf;base64,{pdf_base64}"
+                
+        except Exception as e:
+            raise ValueError(f"Error encoding PDF: {str(e)}")
     
     def create_ocr_prompt(self, languages: List[str], include_structure: bool = True) -> str:
         """Create OCR prompt for Mistral"""
@@ -109,11 +120,25 @@ Format your response as clean, readable text. If there are multiple sections, se
         
         return base_prompt.strip()
     
-    def extract_text_with_mistral(self, image_path: str, languages: List[str]) -> Dict[str, Any]:
-        """Extract text using Mistral AI vision model"""
+    def extract_text_with_mistral(self, file_path: str, languages: List[str]) -> Dict[str, Any]:
+        """Extract text using appropriate Mistral AI API (Vision for images, OCR for PDFs)"""
         try:
             start_time = time.time()
             
+            # Determine file type and use appropriate API
+            file_extension = file_path.lower().split('.')[-1]
+            
+            if file_extension == 'pdf':
+                return self._extract_from_pdf_with_ocr_api(file_path, languages, start_time)
+            else:
+                return self._extract_from_image_with_vision_api(file_path, languages, start_time)
+                
+        except Exception as e:
+            return self._handle_extraction_error(e, languages, start_time)
+    
+    def _extract_from_image_with_vision_api(self, image_path: str, languages: List[str], start_time: float) -> Dict[str, Any]:
+        """Extract text from images using Mistral Vision API (Pixtral)"""
+        try:
             # Encode image
             base64_image = self.encode_image_to_base64(image_path)
             
@@ -190,6 +215,93 @@ Format your response as clean, readable text. If there are multiple sections, se
                 'engine': 'mistral',
                 'error_type': error_type
             }
+    
+    def _extract_from_pdf_with_ocr_api(self, pdf_path: str, languages: List[str], start_time: float) -> Dict[str, Any]:
+        """Extract text from PDF using Mistral OCR API (Document AI)"""
+        try:
+            # Encode PDF to base64 for API call
+            pdf_base64 = self._encode_pdf_to_base64(pdf_path)
+            
+            # Create prompt
+            prompt = self.create_ocr_prompt(languages)
+            
+            # Make API call to Mistral OCR endpoint
+            response = self.client.chat.complete(
+                model="mistral-ocr-latest",
+                messages=[
+                    {
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "text",
+                                "text": prompt
+                            },
+                            {
+                                "type": "image_url",
+                                "image_url": {
+                                    "url": pdf_base64
+                                }
+                            }
+                        ]
+                    }
+                ]
+            )
+            
+            # Extract text from response
+            extracted_text = response.choices[0].message.content.strip()
+            processing_time = (time.time() - start_time) * 1000
+            
+            # Calculate confidence and detect language
+            confidence = self._calculate_confidence(extracted_text)
+            detected_language = self._detect_language(extracted_text)
+            
+            return {
+                'success': True,
+                'text': extracted_text,
+                'confidence': confidence,
+                'language': detected_language,
+                'processing_time_ms': int(processing_time),
+                'engine': 'mistral_ocr',
+                'word_count': len(extracted_text.split()) if extracted_text else 0
+            }
+            
+        except Exception as e:
+            return self._handle_extraction_error(e, languages, start_time)
+    
+    def _handle_extraction_error(self, e: Exception, languages: List[str], start_time: float) -> Dict[str, Any]:
+        """Handle extraction errors with categorization"""
+        error_message = str(e)
+        error_type = 'api_error'
+        
+        # Categorize specific errors
+        if 'api_key' in error_message.lower() or 'authentication' in error_message.lower():
+            error_type = 'authentication_error'
+            error_message = "Invalid or missing Mistral API key"
+        elif 'rate limit' in error_message.lower() or 'quota' in error_message.lower():
+            error_type = 'rate_limit_error'
+            error_message = "Mistral API rate limit exceeded"
+        elif 'network' in error_message.lower() or 'connection' in error_message.lower():
+            error_type = 'network_error'
+            error_message = "Network connection error to Mistral API"
+        elif 'model' in error_message.lower():
+            error_type = 'model_error'
+            error_message = "Mistral model error - check model name"
+        elif 'file' in error_message.lower():
+            error_type = 'file_error'
+            error_message = "File processing error - check file format and accessibility"
+        
+        print(f"Mistral API Error: {error_message} (Type: {error_type})")
+        
+        return {
+            'success': False,
+            'error': error_message,
+            'text': '',
+            'confidence': 0.0,
+            'language': languages[0] if languages else 'en',
+            'processing_time_ms': int((time.time() - start_time) * 1000) if 'start_time' in locals() else 0,
+            'engine': 'mistral',
+            'error_type': error_type
+        }
     
     def _calculate_confidence(self, text: str) -> float:
         """Calculate confidence score based on text characteristics"""

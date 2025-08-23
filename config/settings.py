@@ -23,8 +23,8 @@ class Config:
     # File Upload Configuration
     UPLOAD_FOLDER = os.environ.get('UPLOAD_FOLDER', 'uploads')
     MAX_FILE_SIZE = int(os.environ.get('MAX_FILE_SIZE', 16 * 1024 * 1024))  # 16MB
-    # Mistral Pixtral vision model supported formats only
-    ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+    # Supported formats: images (direct) + PDF (converted to images)
+    ALLOWED_EXTENSIONS = {'pdf', 'png', 'jpg', 'jpeg', 'gif', 'webp', 'tiff', 'bmp'}
     
     # Application Settings
     DEBUG = os.environ.get('DEBUG', 'False').lower() == 'true'
