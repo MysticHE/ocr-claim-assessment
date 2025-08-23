@@ -6,7 +6,12 @@
       "mcp__context7__get-library-docs",
       "Bash(git init:*)",
       "Bash(git remote add:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git branch:*)",
+      "Bash(git push:*)",
+      "Bash(git commit:*)",
+      "mcp__sequential-thinking__sequentialthinking",
+      "Bash(python:*)"
     ],
     "deny": [],
     "ask": [],

@@ -282,23 +282,13 @@ Format your response as clean, readable text. If there are multiple sections, se
             }
 
 class HybridOCREngine:
-    """Hybrid OCR engine that combines PaddleOCR and Mistral AI for best results"""
+    """Hybrid OCR engine that combines EasyOCR and Mistral AI for best results"""
     
     def __init__(self):
-        """Initialize hybrid OCR engine"""
-        self.paddle_available = False
+        """Initialize hybrid OCR engine with EasyOCR and Mistral AI"""
         self.mistral_available = False
         
-        # Initialize PaddleOCR if available
-        try:
-            from ocr_engine.paddle_ocr import PaddleOCREngine
-            self.paddle_engine = PaddleOCREngine()
-            self.paddle_available = True
-        except Exception as e:
-            print(f"PaddleOCR not available in hybrid engine: {e}")
-            self.paddle_engine = None
-        
-        # Initialize Mistral if available
+        # Initialize Mistral OCR
         try:
             self.mistral_engine = MistralOCREngine()
             self.mistral_available = True
@@ -306,7 +296,17 @@ class HybridOCREngine:
             print(f"Mistral OCR not available in hybrid engine: {e}")
             self.mistral_engine = None
         
-        if not self.paddle_available and not self.mistral_available:
+        # Initialize EasyOCR as fallback
+        try:
+            import easyocr
+            self.easyocr_reader = easyocr.Reader(['en'], gpu=False)
+            self.easyocr_available = True
+        except Exception as e:
+            print(f"EasyOCR not available in hybrid engine: {e}")
+            self.easyocr_reader = None
+            self.easyocr_available = False
+        
+        if not self.mistral_available and not self.easyocr_available:
             raise RuntimeError("No OCR engines available")
     
     def process_image(self, image_path: str, languages: List[str], 
@@ -314,18 +314,127 @@ class HybridOCREngine:
         """Process image using available OCR engines"""
         results = {}
         
-        # Try PaddleOCR first
-        if self.paddle_available:
-            paddle_result = self.paddle_engine.process_image(image_path, languages)
-            results['paddle'] = paddle_result
-        
-        # Try Mistral OCR if available and requested
-        if self.mistral_available and (use_both or not self.paddle_available):
+        # Try Mistral OCR first (primary engine)
+        if self.mistral_available:
             mistral_result = self.mistral_engine.process_image(image_path, languages)
             results['mistral'] = mistral_result
         
+        # Try EasyOCR as fallback if requested or if Mistral failed
+        if self.easyocr_available and (use_both or not self.mistral_available or 
+                                      (self.mistral_available and not results.get('mistral', {}).get('success', False))):
+            easyocr_result = self._process_with_easyocr(image_path, languages)
+            results['easyocr'] = easyocr_result
+        
         # Combine results or return best available
         return self._combine_results(results, image_path, languages)
+    
+    def _process_with_easyocr(self, image_path: str, languages: List[str]) -> Dict[str, Any]:
+        """Process image with EasyOCR"""
+        import time
+        
+        try:
+            start_time = time.time()
+            
+            # EasyOCR expects language codes like ['en', 'ch_sim', 'ko']
+            easyocr_langs = self._convert_to_easyocr_langs(languages)
+            
+            # Create reader with specified languages if different from current
+            if set(easyocr_langs) != set(['en']):
+                try:
+                    import easyocr
+                    reader = easyocr.Reader(easyocr_langs, gpu=False)
+                except:
+                    reader = self.easyocr_reader  # Fallback to default reader
+            else:
+                reader = self.easyocr_reader
+            
+            # Process image
+            results = reader.readtext(image_path)
+            
+            # Extract text from results
+            extracted_texts = []
+            confidences = []
+            
+            for (bbox, text, confidence) in results:
+                if text.strip():
+                    extracted_texts.append(text.strip())
+                    confidences.append(confidence)
+            
+            full_text = ' '.join(extracted_texts)
+            avg_confidence = sum(confidences) / len(confidences) if confidences else 0.0
+            
+            processing_time = int((time.time() - start_time) * 1000)
+            
+            return {
+                'success': True,
+                'text': full_text,
+                'confidence': avg_confidence,
+                'language': languages[0] if languages else 'en',
+                'detected_language': self._detect_language(full_text),
+                'processing_time_ms': processing_time,
+                'engine': 'easyocr',
+                'word_count': len(full_text.split()) if full_text else 0
+            }
+            
+        except Exception as e:
+            return {
+                'success': False,
+                'error': str(e),
+                'text': '',
+                'confidence': 0.0,
+                'language': languages[0] if languages else 'en',
+                'processing_time_ms': int((time.time() - start_time) * 1000) if 'start_time' in locals() else 0,
+                'engine': 'easyocr'
+            }
+    
+    def _convert_to_easyocr_langs(self, languages: List[str]) -> List[str]:
+        """Convert language codes to EasyOCR format"""
+        lang_map = {
+            'en': 'en',
+            'zh': 'ch_sim',
+            'zh-CN': 'ch_sim', 
+            'zh-TW': 'ch_tra',
+            'ja': 'ja',
+            'ko': 'ko',
+            'ar': 'ar',
+            'th': 'th',
+            'ta': 'ta',
+            'es': 'es',
+            'fr': 'fr',
+            'de': 'de',
+            'it': 'it',
+            'pt': 'pt',
+            'ru': 'ru'
+        }
+        
+        easyocr_langs = []
+        for lang in languages:
+            mapped_lang = lang_map.get(lang.lower(), 'en')
+            if mapped_lang not in easyocr_langs:
+                easyocr_langs.append(mapped_lang)
+        
+        return easyocr_langs or ['en']
+    
+    def _detect_language(self, text: str) -> str:
+        """Simple language detection based on text characteristics"""
+        if not text:
+            return 'en'
+        
+        # Simple heuristic-based language detection
+        if any('\u4e00' <= char <= '\u9fff' for char in text):
+            return 'zh'
+        if any('\uac00' <= char <= '\ud7af' for char in text):
+            return 'ko'  
+        if any('\u3040' <= char <= '\u309f' or '\u30a0' <= char <= '\u30ff' for char in text):
+            return 'ja'
+        if any('\u0600' <= char <= '\u06ff' for char in text):
+            return 'ar'
+        if any('\u0e00' <= char <= '\u0e7f' for char in text):
+            return 'th'
+        if any('\u0b80' <= char <= '\u0bff' for char in text):
+            return 'ta'
+        
+        return 'en'
     
     def _combine_results(self, results: Dict[str, Any], image_path: str, 
                         languages: List[str]) -> Dict[str, Any]:
