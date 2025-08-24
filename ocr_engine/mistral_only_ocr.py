@@ -156,12 +156,19 @@ Translate any non-English content to English while preserving the document struc
         return base_prompt.strip()
     
     def extract_text_with_mistral(self, file_path: str, languages: List[str]) -> Dict[str, Any]:
-        """Extract text using Mistral OCR API for both images and PDFs"""
+        """Extract text using appropriate Mistral AI API (OCR for PDFs, Vision for images with OCR-focused prompts)"""
         try:
             start_time = time.time()
             
-            # Use OCR API for all file types (both images and PDFs)
-            return self._extract_with_ocr_api(file_path, languages, start_time)
+            # Determine file type and use appropriate API
+            file_extension = file_path.lower().split('.')[-1]
+            
+            if file_extension == 'pdf':
+                # Use OCR API for PDFs
+                return self._extract_with_ocr_api(file_path, languages, start_time)
+            else:
+                # Use Vision API for images but with OCR-focused prompts for raw text extraction
+                return self._extract_from_image_with_ocr_focus(file_path, languages, start_time)
                 
         except Exception as e:
             return self._handle_extraction_error(e, languages, start_time)
@@ -215,6 +222,95 @@ Translate any non-English content to English while preserving the document struc
             
         except Exception as e:
             return self._handle_extraction_error(e, languages, start_time)
+    
+    def _extract_from_image_with_ocr_focus(self, image_path: str, languages: List[str], start_time: float) -> Dict[str, Any]:
+        """Extract text from images using Mistral Vision API with OCR-focused prompts for raw text extraction"""
+        try:
+            # Encode image for Vision API (standard quality is sufficient for Vision API)
+            base64_image = self.encode_image_to_base64(image_path)
+            
+            # Use OCR-focused prompt for raw text extraction
+            prompt = self.create_ocr_prompt(languages, include_structure=True)
+            
+            # Make API call to Vision API with OCR-focused configuration
+            response = self.client.chat.complete(
+                model="pixtral-12b-2409",
+                messages=[
+                    {
+                        "role": "user", 
+                        "content": [
+                            {
+                                "type": "text",
+                                "text": prompt
+                            },
+                            {
+                                "type": "image_url",
+                                "image_url": {
+                                    "url": base64_image
+                                }
+                            }
+                        ]
+                    }
+                ],
+                temperature=0.1,  # Low temperature for consistent OCR extraction
+                max_tokens=2048   # Sufficient for most OCR text
+            )
+            
+            # Extract and clean the text response
+            extracted_text = response.choices[0].message.content.strip()
+            
+            # Clean up conversational elements that might appear in Vision API responses
+            extracted_text = self._clean_vision_response_for_ocr(extracted_text)
+            
+            processing_time = (time.time() - start_time) * 1000
+            
+            # Calculate confidence and detect language
+            confidence = self._calculate_confidence(extracted_text)
+            detected_language = self._detect_language(extracted_text)
+            
+            return {
+                'success': True,
+                'text': extracted_text,
+                'confidence': confidence,
+                'language': detected_language,
+                'processing_time_ms': int(processing_time),
+                'engine': 'mistral_vision_ocr',
+                'word_count': len(extracted_text.split()) if extracted_text else 0
+            }
+            
+        except Exception as e:
+            return self._handle_extraction_error(e, languages, start_time)
+    
+    def _clean_vision_response_for_ocr(self, text: str) -> str:
+        """Clean Vision API response to extract only the OCR text content"""
+        if not text:
+            return text
+        
+        # Remove common conversational prefixes that Vision API might add
+        conversational_prefixes = [
+            "The text in this image says:",
+            "The text in the image is:",
+            "I can see the following text:",
+            "The extracted text is:",
+            "Here is the text from the image:",
+            "The text content is:",
+            "Text extracted:",
+            "The document contains:",
+            "I can read:"
+        ]
+        
+        cleaned_text = text
+        for prefix in conversational_prefixes:
+            if cleaned_text.lower().startswith(prefix.lower()):
+                cleaned_text = cleaned_text[len(prefix):].strip()
+                break
+        
+        # Remove quotes if the entire response is wrapped in quotes
+        if ((cleaned_text.startswith('"') and cleaned_text.endswith('"')) or 
+            (cleaned_text.startswith("'") and cleaned_text.endswith("'"))):
+            cleaned_text = cleaned_text[1:-1].strip()
+        
+        return cleaned_text
     
     def _extract_from_image_with_vision_api(self, image_path: str, languages: List[str], start_time: float) -> Dict[str, Any]:
         """Extract text from images using Mistral Vision API (Pixtral)"""
