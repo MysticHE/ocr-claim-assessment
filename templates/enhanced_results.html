@@ -530,42 +530,6 @@
                                 </div>
                                 {% endif %}
 
-                                <!-- Final Decision Integration -->
-                                <div class="validation-section">
-                                    <h5 class="section-title">Processing Decision</h5>
-                                    <div class="decision-summary-wide">
-                                        <div class="decision-status-wide {{ result.status }}">
-                                            <div class="decision-icon">
-                                                {% if result.status == 'approved' %}✅
-                                                {% elif result.status == 'rejected' %}❌
-                                                {% elif result.status == 'review' %}⚠️
-                                                {% else %}⏳
-                                                {% endif %}
-                                            </div>
-                                            <div class="decision-content">
-                                                <div class="decision-title">
-                                                    {% if result.status == 'approved' %}CLAIM APPROVED
-                                                    {% elif result.status == 'rejected' %}CLAIM REJECTED
-                                                    {% elif result.status == 'review' %}MANUAL REVIEW REQUIRED
-                                                    {% else %}{{ result.status|upper }}
-                                                    {% endif %}
-                                                </div>
-                                                <div class="decision-confidence-wide">{{ ((result.confidence or 0) * 100)|round }}% confidence</div>
-                                            </div>
-                                        </div>
-                                        
-                                        {% if result.decision_reasons %}
-                                        <div class="decision-reasons-wide">
-                                            <h6 class="reasons-title">Decision Factors:</h6>
-                                            <ul class="reasons-list">
-                                                {% for reason in result.decision_reasons %}
-                                                <li class="reason-item">{{ reason }}</li>
-                                                {% endfor %}
-                                            </ul>
-                                        </div>
-                                        {% endif %}
-                                    </div>
-                                </div>
                             </div>
                         </div>
                     </div>
