@@ -161,9 +161,11 @@ Translate any non-English content to English while preserving the document struc
             if file_extension == 'pdf':
                 # Encode PDF to base64
                 document_base64 = self._encode_pdf_to_base64(file_path)
+                print(f"PDF encoded - length: {len(document_base64)}, prefix: {document_base64[:50]}...")
             else:
                 # Encode image to base64 following Mistral documentation format
                 document_base64 = self._encode_image_to_base64_for_ocr(file_path)
+                print(f"Image encoded - length: {len(document_base64)}, prefix: {document_base64[:50]}...")
             
             # Make API call to Mistral OCR endpoint following official documentation
             response = self.client.ocr.process(
@@ -200,6 +202,13 @@ Translate any non-English content to English while preserving the document struc
             }
             
         except Exception as e:
+            # Add detailed error logging for debugging OCR API issues
+            error_details = {
+                'error_message': str(e),
+                'error_type': type(e).__name__,
+                'file_extension': file_path.lower().split('.')[-1] if file_path else 'unknown'
+            }
+            print(f"OCR API Error Details: {error_details}")
             return self._handle_extraction_error(e, languages, start_time)
     
     def _extract_from_image_with_ocr_focus(self, image_path: str, languages: List[str], start_time: float) -> Dict[str, Any]:
