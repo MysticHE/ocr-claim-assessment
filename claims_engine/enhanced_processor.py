@@ -84,18 +84,16 @@ class EnhancedClaimProcessor:
         self._classifier_initialization_attempted = False
         self._assessor_initialization_attempted = False
         
-        # Workflow steps definition
+        # Streamlined workflow steps definition (8 essential steps)
         self.workflow_steps = [
-            "document_upload",
-            "quality_assessment", 
-            "document_classification",
-            "ocr_processing",
-            "structured_extraction",
-            "data_validation",
-            "fraud_detection",
-            "policy_verification",
-            "claim_adjudication",
-            "decision_generation"
+            "document_upload",           # 1. File upload and initial processing
+            "quality_assessment",        # 2. Document quality check
+            "document_classification",   # 3. AI document type detection  
+            "ocr_processing",           # 4. Text extraction
+            "structured_extraction",    # 5. Data field extraction
+            "data_validation",          # 6. Business rules validation
+            "fraud_detection",          # 7. Fraud pattern detection
+            "decision_generation"       # 8. Final claim decision (includes policy check)
         ]
         
         # Duplicate claim tracking (simple in-memory store)
@@ -309,20 +307,12 @@ class EnhancedClaimProcessor:
             current_step.end_time = datetime.now()
             workflow_steps.append(current_step)
             
-            # Step 8: Policy Verification (placeholder - would integrate with policy system)
-            workflow_steps.append(WorkflowStep(
-                step_name="policy_verification",
-                status="skipped",
-                start_time=datetime.now(),
-                end_time=datetime.now(),
-                output_summary="Policy verification system not integrated"
-            ))
-            
-            # Step 9: Claim Adjudication & Decision
+            # Step 8: Claim Adjudication & Decision (combining policy_verification + claim_adjudication + decision_generation)
             current_step = WorkflowStep(
                 step_name="decision_generation",
                 status="in_progress",
-                start_time=datetime.now()
+                start_time=datetime.now(),
+                ai_engine_used="rule_engine"
             )
             
             decision = self.make_enhanced_decision(

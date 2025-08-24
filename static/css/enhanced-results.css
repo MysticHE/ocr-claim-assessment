@@ -1,0 +1,588 @@
+/* Enhanced Results Page Optimization */
+/* Addresses: layout optimization, space efficiency, color consistency, duplicate removal */
+
+/* Container and Layout Optimization */
+.enhanced-results-container {
+  padding: 1rem 0;
+  max-width: 1400px; /* Increased for better space utilization */
+}
+
+/* Compact Page Header */
+.page-title {
+  text-align: center;
+  margin-bottom: 1.5rem; /* Reduced from 3rem */
+}
+
+.page-title h1 {
+  font-size: 2rem; /* Reduced from 2.25rem */
+  margin-bottom: 0.25rem;
+}
+
+.page-subtitle {
+  font-size: 1rem; /* Reduced from 1.125rem */
+  margin-top: 0;
+}
+
+/* Optimized Executive Summary */
+.executive-summary {
+  background: linear-gradient(135deg, #fefefe 0%, #f8fafc 100%);
+  border-radius: 12px;
+  padding: 1.5rem; /* Reduced from 2rem */
+  margin-bottom: 1.5rem; /* Reduced from 2rem */
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.06);
+  border: 1px solid #e2e8f0;
+}
+
+.summary-header {
+  margin-bottom: 1rem; /* Reduced from 1.5rem */
+  padding-bottom: 0.75rem; /* Reduced from 1rem */
+}
+
+.summary-title {
+  font-size: 1.375rem; /* Reduced from 1.5rem */
+}
+
+/* Compact Summary Cards Grid */
+.summary-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); /* Reduced from 240px */
+  gap: 1rem; /* Reduced from 1.5rem */
+  margin-bottom: 1.5rem; /* Reduced from 2rem */
+}
+
+.summary-card {
+  padding: 1.25rem; /* Reduced from 1.5rem */
+  border-radius: 10px;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.04);
+  border: 1px solid #e2e8f0;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.summary-card:hover {
+  transform: translateY(-1px); /* Reduced from -2px */
+  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.08);
+}
+
+/* Enhanced Color Matching for Cards */
+.summary-card.decision-card.approved {
+  background: linear-gradient(135deg, #f0fdf4 0%, #f7fee7 100%);
+  border-left: 4px solid #16a34a;
+}
+
+.summary-card.decision-card.rejected {
+  background: linear-gradient(135deg, #fef2f2 0%, #fdf2f8 100%);
+  border-left: 4px solid #dc2626;
+}
+
+.summary-card.decision-card.review {
+  background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+  border-left: 4px solid #d97706;
+}
+
+.summary-card.risk-card {
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+  border-left: 4px solid #0ea5e9;
+}
+
+.summary-card.document-card {
+  background: linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%);
+  border-left: 4px solid #8b5cf6;
+}
+
+.summary-card.quality-card {
+  background: linear-gradient(135deg, #fefce8 0%, #fef3c7 100%);
+  border-left: 4px solid #f59e0b;
+}
+
+/* Compact Card Content */
+.card-icon {
+  width: 40px; /* Reduced from 48px */
+  height: 40px; /* Reduced from 48px */
+}
+
+.card-value {
+  font-size: 1.125rem; /* Reduced from 1.25rem */
+  line-height: 1.3;
+}
+
+.card-subtitle {
+  font-size: 0.8rem; /* Reduced from 0.75rem for better readability */
+}
+
+/* Optimized Next Actions */
+.next-actions {
+  padding: 1.25rem; /* Reduced from 1.5rem */
+}
+
+.action-items {
+  gap: 0.5rem; /* Reduced from 0.75rem */
+}
+
+.action-item {
+  padding: 0.625rem 0.875rem; /* Reduced from 0.75rem 1rem */
+  font-size: 0.8rem; /* Reduced from 0.875rem */
+}
+
+/* Duplicate Warning Optimization */
+.duplicate-warning {
+  background: linear-gradient(135deg, #fef5e7 0%, #fdf2e9 100%);
+  border: 1px solid #fed7aa;
+  border-left: 4px solid #ea580c;
+  border-radius: 10px;
+  padding: 1.25rem; /* Reduced from 1.5rem */
+  margin-bottom: 1.5rem; /* Reduced from 2rem */
+  box-shadow: 0 4px 15px rgba(234, 88, 12, 0.1);
+}
+
+.warning-header {
+  margin-bottom: 1rem; /* Reduced from 1.5rem */
+  padding-bottom: 0.75rem; /* Reduced from 1rem */
+  border-bottom: 1px solid #fed7aa;
+}
+
+/* Duplicate prevention handled at backend level - no CSS hiding needed */
+
+/* Simplified duplicate actions */
+.duplicate-actions {
+  gap: 0.75rem; /* Reduced from 1rem */
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  padding-bottom: 0.25rem;
+}
+
+.duplicate-actions .btn {
+  min-width: 140px; /* Reduced from 160px */
+  font-size: 0.8rem;
+  padding: 0.5rem 1rem;
+  white-space: nowrap;
+}
+
+/* Compact Interactive Workflow */
+.workflow-progress-interactive {
+  padding: 1.5rem; /* Reduced from 2rem */
+  margin: 1.5rem 0; /* Reduced from 2rem 0 */
+}
+
+.workflow-header {
+  margin-bottom: 1.5rem; /* Reduced from 2rem */
+}
+
+.workflow-title {
+  font-size: 1.25rem; /* Reduced size */
+  margin-bottom: 0.75rem;
+}
+
+.workflow-title .ai-badge {
+  font-size: 0.7rem;
+  padding: 0.2rem 0.5rem;
+}
+
+/* Optimized Timeline */
+.workflow-step-interactive {
+  margin-bottom: 1.5rem; /* Reduced from 2rem */
+  padding-left: 3.5rem; /* Reduced from 4rem */
+}
+
+.step-indicator-interactive {
+  width: 50px; /* Reduced from 60px */
+  height: 50px; /* Reduced from 60px */
+  font-size: 0.9rem; /* Reduced from 1rem */
+}
+
+.step-connector {
+  left: 24px; /* Adjusted for smaller indicator */
+  top: 50px; /* Adjusted */
+}
+
+.step-content-interactive {
+  padding-left: 0.75rem; /* Reduced from 1rem */
+}
+
+.step-name {
+  font-size: 0.9rem; /* Reduced from 1rem */
+}
+
+.step-description {
+  font-size: 0.8rem; /* Reduced from 0.875rem */
+}
+
+/* Compact Statistics */
+.workflow-stats {
+  grid-template-columns: repeat(4, 1fr); /* Force 4 columns */
+  gap: 0.75rem; /* Reduced from 1rem */
+  margin-top: 1.5rem; /* Reduced from 2rem */
+  padding-top: 1rem; /* Reduced from 1.5rem */
+}
+
+.stat-item {
+  padding: 0.75rem; /* Reduced from 1rem */
+}
+
+.stat-value {
+  font-size: 1.25rem; /* Reduced from 1.5rem */
+}
+
+/* Detailed Analysis Optimization */
+.detailed-analysis {
+  padding: 1.25rem; /* Reduced from 1.5rem */
+  margin-bottom: 1.5rem; /* Reduced from 2rem */
+}
+
+.analysis-header {
+  margin-bottom: 1rem; /* Reduced from 1.5rem */
+  padding-bottom: 0.75rem; /* Reduced from 1rem */
+}
+
+/* Compact AI Results Grid */
+.ai-results-grid {
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); /* Reduced from 300px */
+  gap: 1rem; /* Reduced from 1.5rem */
+  margin: 1.5rem 0; /* Reduced from 2rem 0 */
+}
+
+.ai-result-card {
+  padding: 1.25rem; /* Reduced from 1.5rem */
+}
+
+/* Remove unused duplicate hiding styles - fixed at source */
+
+/* Optimized Quality Dashboard */
+.interactive-quality-dashboard {
+  grid-template-columns: minmax(180px, 200px) 1fr; /* More compact gauge */
+  gap: 1.5rem; /* Reduced from 2rem */
+  margin: 1rem 0; /* Reduced from 1.5rem 0 */
+}
+
+.quality-metrics-interactive {
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); /* Reduced from 120px */
+  gap: 1rem; /* Reduced from 1.5rem */
+}
+
+.quality-metric-interactive {
+  padding: 0.75rem; /* Reduced from 1rem */
+}
+
+.metric-circle {
+  width: 70px; /* Reduced from 80px */
+  height: 70px; /* Reduced from 80px */
+  margin-bottom: 0.5rem; /* Reduced from 0.75rem */
+}
+
+/* Compact Cards Summary */
+.card-summary {
+  padding: 0.75rem 0; /* Reduced from 1rem 0 */
+  margin-bottom: 0.75rem; /* Reduced from 1rem */
+}
+
+.card-details {
+  max-height: 400px; /* Reduced from 500px */
+}
+
+/* Decision Summary Optimization */
+.decision-summary {
+  padding: 1.5rem; /* Reduced from 2rem */
+  margin: 1.5rem 0; /* Reduced from 2rem 0 */
+}
+
+/* Extracted Text Optimization */
+.extracted-text {
+  padding: 1.25rem; /* Reduced from 1.5rem */
+  margin: 1.5rem 0; /* Reduced from 2rem 0 */
+}
+
+.extracted-text-content {
+  max-height: 250px; /* Reduced from 300px */
+  font-size: 0.8rem; /* Reduced from 0.875rem */
+}
+
+/* Action Buttons Optimization */
+.action-buttons {
+  margin-top: 1.5rem; /* Reduced from 2rem */
+  gap: 0.75rem; /* Reduced from 1rem */
+}
+
+/* Improved Color Consistency */
+:root {
+  --enhanced-primary: #2563eb;
+  --enhanced-success: #16a34a;
+  --enhanced-warning: #d97706;
+  --enhanced-error: #dc2626;
+  --enhanced-info: #0ea5e9;
+  --enhanced-purple: #8b5cf6;
+  --enhanced-surface: #ffffff;
+  --enhanced-background: #f8fafc;
+  --enhanced-border: #e2e8f0;
+}
+
+/* Status-specific color improvements */
+.approved, .success { color: var(--enhanced-success) !important; }
+.rejected, .error { color: var(--enhanced-error) !important; }
+.review, .warning { color: var(--enhanced-warning) !important; }
+.info { color: var(--enhanced-info) !important; }
+
+/* Responsive Optimizations */
+@media (max-width: 1200px) {
+  .enhanced-results-container {
+    max-width: 100%;
+    padding: 0.75rem 0;
+  }
+  
+  .summary-cards {
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  }
+  
+  .ai-results-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .executive-summary {
+    padding: 1rem;
+  }
+  
+  .summary-cards {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+  
+  .summary-card {
+    padding: 1rem;
+  }
+  
+  .interactive-quality-dashboard {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  
+  .workflow-step-interactive {
+    padding-left: 2.5rem;
+  }
+  
+  .step-indicator-interactive {
+    width: 40px;
+    height: 40px;
+    font-size: 0.8rem;
+  }
+  
+  .step-connector {
+    left: 19px;
+  }
+  
+  .workflow-stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .duplicate-actions {
+    flex-direction: column;
+  }
+  
+  .duplicate-actions .btn {
+    min-width: auto;
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .enhanced-results-container {
+    padding: 0.5rem 0;
+  }
+  
+  .page-title h1 {
+    font-size: 1.75rem;
+  }
+  
+  .summary-card {
+    padding: 0.875rem;
+  }
+  
+  .workflow-progress-interactive,
+  .detailed-analysis,
+  .decision-summary {
+    padding: 1rem;
+  }
+  
+  .ai-result-card {
+    padding: 1rem;
+  }
+}
+
+/* Print Optimizations */
+@media print {
+  .enhanced-results-container {
+    max-width: none;
+    margin: 0;
+    padding: 0;
+  }
+  
+  .summary-card,
+  .ai-result-card,
+  .workflow-progress-interactive {
+    break-inside: avoid;
+    box-shadow: none;
+    border: 1px solid #ccc;
+  }
+  
+  .duplicate-warning {
+    break-inside: avoid;
+  }
+  
+  .action-buttons {
+    display: none;
+  }
+}
+
+/* Performance Optimizations */
+.summary-card,
+.ai-result-card,
+.workflow-step-interactive {
+  will-change: transform;
+}
+
+.summary-card:hover,
+.ai-result-card:hover,
+.workflow-step-interactive:hover {
+  will-change: auto;
+}
+
+/* Focus and Accessibility Improvements */
+.expand-toggle:focus,
+.view-toggle:focus,
+.btn:focus {
+  outline: 2px solid var(--enhanced-primary);
+  outline-offset: 2px;
+}
+
+/* Reduced Motion Support */
+@media (prefers-reduced-motion: reduce) {
+  .summary-card,
+  .ai-result-card,
+  .workflow-step-interactive,
+  .action-item {
+    transition: none;
+  }
+  
+  .summary-card:hover,
+  .ai-result-card:hover,
+  .workflow-step-interactive:hover,
+  .action-item:hover {
+    transform: none;
+  }
+}
+
+/* High Contrast Mode Support */
+@media (prefers-contrast: high) {
+  .summary-card,
+  .ai-result-card,
+  .duplicate-warning {
+    border-width: 2px;
+  }
+  
+  .card-value,
+  .step-name,
+  .workflow-title {
+    font-weight: 700;
+  }
+}
+
+/* Dark Mode Improvements (if implemented in the future) */
+@media (prefers-color-scheme: dark) {
+  .enhanced-results-container {
+    --enhanced-surface: #1e293b;
+    --enhanced-background: #0f172a;
+    --enhanced-border: #334155;
+  }
+}
+
+/* View Mode Control */
+.ai-results-grid[data-view="essential"] .ai-result-card[data-category="detailed"] {
+  display: none;
+}
+
+.ai-results-grid[data-view="essential"] .card-details {
+  display: none !important;
+}
+
+/* Compact Mode Styles */
+.compact-toggle {
+  min-width: 40px !important;
+  padding: 0.5rem 0.75rem !important;
+  font-size: 1rem;
+}
+
+/* When compact mode is active */
+body.compact-mode .enhanced-results-container {
+  font-size: 0.875rem;
+}
+
+body.compact-mode .summary-cards {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.75rem;
+}
+
+body.compact-mode .summary-card {
+  padding: 1rem;
+}
+
+body.compact-mode .card-icon {
+  width: 32px;
+  height: 32px;
+}
+
+body.compact-mode .card-value {
+  font-size: 1rem;
+}
+
+body.compact-mode .ai-results-grid {
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 0.75rem;
+}
+
+body.compact-mode .ai-result-card {
+  padding: 1rem;
+}
+
+body.compact-mode .workflow-step-interactive {
+  margin-bottom: 1rem;
+  padding-left: 3rem;
+}
+
+body.compact-mode .step-indicator-interactive {
+  width: 40px;
+  height: 40px;
+  font-size: 0.8rem;
+}
+
+body.compact-mode .step-connector {
+  left: 19px;
+}
+
+body.compact-mode .interactive-quality-dashboard {
+  grid-template-columns: minmax(150px, 180px) 1fr;
+  gap: 1rem;
+}
+
+body.compact-mode .metric-circle {
+  width: 60px;
+  height: 60px;
+}
+
+body.compact-mode .page-title h1 {
+  font-size: 1.75rem;
+}
+
+body.compact-mode .summary-title {
+  font-size: 1.25rem;
+}
+
+body.compact-mode .executive-summary,
+body.compact-mode .workflow-progress-interactive,
+body.compact-mode .detailed-analysis {
+  padding: 1rem;
+}
+
+/* Compact mode indicator */
+.compact-toggle.active {
+  background: #10b981 !important;
+  color: white !important;
+}

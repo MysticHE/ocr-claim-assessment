@@ -9,6 +9,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/components.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/responsive.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/enhanced-results.css') }}">
     
     <!-- Chart.js for interactive visualizations -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -399,6 +400,7 @@
                     <div class="view-controls">
                         <button class="view-toggle active" data-view="essential">Essential View</button>
                         <button class="view-toggle" data-view="detailed">Complete Analysis</button>
+                        <button class="view-toggle compact-toggle" data-view="compact" title="Compact Layout">📊</button>
                     </div>
                 </div>
 
@@ -789,16 +791,44 @@
             URL.revokeObjectURL(url);
         }
 
+        // Enhanced Performance Tracking
+        function trackPagePerformance() {
+            const loadTime = performance.now();
+            console.log(`Enhanced Results page loaded in ${Math.round(loadTime)}ms`);
+            
+            // Track workflow steps for analytics
+            const totalSteps = document.querySelectorAll('.workflow-step-interactive').length;
+            const completedSteps = document.querySelectorAll('.workflow-step-interactive.completed').length;
+            
+            console.log(`Workflow Progress: ${completedSteps}/${totalSteps} steps completed`);
+        }
+
         // Progressive Disclosure System
         document.addEventListener('DOMContentLoaded', function() {
+            // Initialize performance tracking
+            trackPagePerformance();
             // View Toggle Controls
             const viewToggles = document.querySelectorAll('.view-toggle');
             const analysisGrid = document.querySelector('.ai-results-grid');
 
             viewToggles.forEach(toggle => {
                 toggle.addEventListener('click', function() {
-                    // Update active toggle
-                    viewToggles.forEach(t => t.classList.remove('active'));
+                    // Handle compact mode specially
+                    if (this.dataset.view === 'compact') {
+                        document.body.classList.toggle('compact-mode');
+                        this.classList.toggle('active');
+                        
+                        // Store preference in localStorage
+                        localStorage.setItem('compactMode', document.body.classList.contains('compact-mode'));
+                        return;
+                    }
+                    
+                    // Update active toggle (except compact)
+                    viewToggles.forEach(t => {
+                        if (t.dataset.view !== 'compact') {
+                            t.classList.remove('active');
+                        }
+                    });
                     this.classList.add('active');
                     
                     // Update grid view
@@ -808,6 +838,15 @@
                     }
                 });
             });
+            
+            // Load compact mode preference
+            if (localStorage.getItem('compactMode') === 'true') {
+                document.body.classList.add('compact-mode');
+                const compactToggle = document.querySelector('.compact-toggle');
+                if (compactToggle) {
+                    compactToggle.classList.add('active');
+                }
+            }
 
             // Expand/Collapse Controls
             const expandToggles = document.querySelectorAll('.expand-toggle');
