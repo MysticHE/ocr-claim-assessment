@@ -205,6 +205,314 @@
   .workflow-progress {
     padding: 1rem;
   }
+
+  /* Executive Summary Mobile */
+  .executive-summary {
+    padding: 1rem;
+    margin: 1rem 0;
+  }
+
+  .summary-header {
+    flex-direction: column;
+    gap: 1rem;
+    text-align: center;
+  }
+
+  .summary-cards {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .summary-card {
+    padding: 1.5rem 1rem;
+  }
+
+  .card-icon {
+    font-size: 2rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .next-actions {
+    padding: 1rem;
+  }
+
+  .action-item {
+    padding: 1rem;
+    margin-bottom: 0.75rem;
+  }
+
+  /* View Controls Mobile - Touch Friendly */
+  .view-controls {
+    justify-content: center;
+    margin: 1rem 0;
+  }
+
+  .view-control-btn {
+    flex: 1;
+    max-width: 140px;
+    min-height: 48px; /* Touch-friendly height */
+    font-size: 0.875rem;
+    padding: 0.75rem 1rem;
+  }
+
+  /* Progressive Disclosure Mobile */
+  .detailed-analysis {
+    padding: 1rem;
+    margin: 1rem 0;
+  }
+
+  .ai-result-card {
+    margin-bottom: 1rem;
+    padding: 1rem;
+  }
+
+  .ai-result-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+  }
+
+  .card-header-content {
+    text-align: center;
+  }
+
+  .card-controls {
+    justify-content: center;
+    gap: 1rem;
+  }
+
+  .expand-toggle {
+    min-height: 44px; /* Touch-friendly */
+    min-width: 44px;
+    padding: 0.75rem;
+  }
+
+  .importance-indicator {
+    padding: 0.5rem 1rem;
+    font-size: 0.75rem;
+  }
+
+  /* Interactive Quality Dashboard Mobile */
+  .interactive-quality-dashboard {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+    text-align: center;
+  }
+
+  .quality-gauge-wrapper {
+    margin: 0 auto;
+  }
+
+  .quality-metrics-interactive {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+  }
+
+  .quality-metric-interactive {
+    padding: 1rem 0.5rem;
+    min-height: 120px; /* Touch-friendly */
+  }
+
+  .metric-circle {
+    width: 60px;
+    height: 60px;
+    margin-bottom: 0.5rem;
+  }
+
+  .metric-label {
+    font-size: 0.75rem;
+  }
+
+  .metric-value {
+    font-size: 0.75rem;
+  }
+
+  .metric-status {
+    font-size: 0.625rem;
+    padding: 0.25rem 0.375rem;
+  }
+
+  /* Interactive Workflow Mobile */
+  .workflow-progress-interactive {
+    padding: 1rem;
+    margin: 1rem 0;
+  }
+
+  .workflow-header {
+    margin-bottom: 1.5rem;
+    text-align: center;
+  }
+
+  .workflow-timeline {
+    padding: 0.5rem 0;
+  }
+
+  .workflow-step-interactive {
+    padding-left: 3rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .step-indicator-interactive {
+    width: 44px; /* Touch-friendly */
+    height: 44px;
+    font-size: 0.875rem;
+    left: 0;
+  }
+
+  .step-connector {
+    left: 21px; /* Adjusted for smaller indicator */
+    top: 44px;
+  }
+
+  .step-content-interactive {
+    padding-left: 0.75rem;
+  }
+
+  .step-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+
+  .step-name {
+    font-size: 0.9rem;
+  }
+
+  .step-description {
+    font-size: 0.8rem;
+  }
+
+  .step-metrics {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .mini-metric {
+    min-width: 50px;
+    padding: 0.375rem;
+  }
+
+  .workflow-stats {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+    margin-top: 1.5rem;
+  }
+
+  .stat-item {
+    padding: 0.75rem 0.5rem;
+  }
+
+  .stat-value {
+    font-size: 1.25rem;
+  }
+
+  .stat-label {
+    font-size: 0.625rem;
+  }
+
+  /* Duplicate Warning Mobile */
+  .duplicate-warning {
+    padding: 1rem;
+    margin: 1rem 0;
+    border-radius: var(--radius-md);
+  }
+
+  .warning-header {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 1rem;
+  }
+
+  .similarity-score {
+    order: -1; /* Move to top */
+    margin-bottom: 0.5rem;
+  }
+
+  .duplicate-details {
+    padding: 1rem 0.5rem;
+  }
+
+  .match-info {
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .duplicate-actions {
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-top: 1rem;
+  }
+
+  .duplicate-actions .btn {
+    min-height: 48px; /* Touch-friendly */
+    font-size: 0.875rem;
+    padding: 0.75rem 1rem;
+    width: 100%;
+  }
+
+  /* Extracted Data Grid Mobile */
+  .extracted-data-grid {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+
+  .extracted-field {
+    padding: 1rem;
+    border-radius: var(--radius-md);
+    background: var(--background-color);
+  }
+
+  .field-label {
+    font-size: 0.75rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .field-value {
+    font-size: 0.875rem;
+    word-break: break-word;
+  }
+
+  /* Touch-Friendly Interactions */
+  .expand-toggle,
+  .view-control-btn,
+  .duplicate-actions .btn,
+  .quality-metric-interactive,
+  .workflow-step-interactive {
+    cursor: pointer;
+    -webkit-tap-highlight-color: rgba(37, 99, 235, 0.1);
+  }
+
+  /* Enhanced Touch Targets */
+  .expand-toggle:hover,
+  .expand-toggle:focus {
+    transform: scale(1.1);
+    transition: transform 0.2s ease;
+  }
+
+  .quality-metric-interactive:hover {
+    transform: translateY(-4px);
+    transition: transform 0.3s ease;
+  }
+
+  .workflow-step-interactive:hover {
+    transform: translateX(8px);
+    transition: transform 0.3s ease;
+  }
+
+  /* Toast Mobile */
+  .toast {
+    top: 10px;
+    right: 10px;
+    left: 10px;
+    max-width: none;
+    min-width: unset;
+    padding: 1rem;
+    font-size: 0.875rem;
+    border-radius: var(--radius-lg);
+  }
 }
 
 /* Tablet styles (481px to 768px) */
@@ -251,6 +559,50 @@
   .nav-links {
     justify-content: flex-end;
   }
+
+  /* Enhanced Results Tablet */
+  .summary-cards {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+  }
+
+  .interactive-quality-dashboard {
+    grid-template-columns: 1fr 2fr;
+    gap: 2rem;
+  }
+
+  .quality-metrics-interactive {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.5rem;
+  }
+
+  .workflow-progress-interactive {
+    padding: 1.5rem;
+  }
+
+  .workflow-step-interactive {
+    padding-left: 4rem;
+  }
+
+  .step-indicator-interactive {
+    width: 50px;
+    height: 50px;
+  }
+
+  .step-connector {
+    left: 24px;
+    top: 50px;
+  }
+
+  .duplicate-actions {
+    flex-direction: row;
+    gap: 1rem;
+  }
+
+  .duplicate-actions .btn {
+    flex: 1;
+    max-width: 200px;
+  }
 }
 
 /* Desktop styles (769px to 1024px) */
@@ -268,6 +620,41 @@
   /* Upload area desktop */
   .upload-area:hover {
     transform: scale(1.01);
+  }
+
+  /* Enhanced Results Desktop */
+  .summary-cards {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2rem;
+  }
+
+  .interactive-quality-dashboard {
+    grid-template-columns: 1fr 3fr;
+    gap: 3rem;
+  }
+
+  .quality-metrics-interactive {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2rem;
+  }
+
+  .workflow-progress-interactive {
+    padding: 2rem;
+  }
+
+  .workflow-stats {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1.5rem;
+  }
+
+  .duplicate-actions {
+    justify-content: center;
+    gap: 1.5rem;
+  }
+
+  .duplicate-actions .btn {
+    max-width: 180px;
+    min-width: 140px;
   }
 }
 

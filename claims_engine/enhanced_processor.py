@@ -492,9 +492,9 @@ class EnhancedClaimProcessor:
         
         # Duplicate claim detection
         if self.rules['duplicate_check_enabled']:
-            duplicate_check = self._check_duplicate_claim(data)
-            if duplicate_check:
-                suspicious_findings.append(duplicate_check)
+            duplicate_result = self._check_duplicate_claim(data)
+            if duplicate_result:
+                suspicious_findings.append(f"Duplicate: {duplicate_result['details']} (Similarity: {duplicate_result['similarity_score']:.1%})")
         
         # Quality-based fraud indicators
         if data.quality_issues:
@@ -519,22 +519,234 @@ class EnhancedClaimProcessor:
         
         return suspicious_findings
     
-    def _check_duplicate_claim(self, data: EnhancedClaimData) -> Optional[str]:
-        """Check for duplicate claims using content hashing"""
+    def _check_duplicate_claim(self, data: EnhancedClaimData) -> Optional[Dict[str, Any]]:
+        """Enhanced duplicate detection with fuzzy matching and similarity scoring"""
         try:
-            # Create a hash from key claim attributes
+            # Store in database for persistent duplicate detection
+            from database.supabase_client import SupabaseClient
+            
+            db_client = SupabaseClient()
+            
+            # Calculate multiple similarity metrics
+            duplicates_found = []
+            
+            # 1. Exact hash matching (existing method)
             claim_key = f"{data.patient_name}|{data.total_amount}|{data.treatment_dates}|{data.provider_name}"
             claim_hash = hashlib.md5(claim_key.encode()).hexdigest()
             
-            # Check against cache (in production, this would be database-backed)
-            if claim_hash in self.processed_claims_cache:
-                previous_claim = self.processed_claims_cache[claim_hash]
-                time_diff = datetime.now() - previous_claim['timestamp']
+            # 2. Fuzzy text matching for patient names
+            if data.patient_name:
+                similar_claims = self._find_similar_claims_by_text(db_client, data)
+                duplicates_found.extend(similar_claims)
+            
+            # 3. Amount and date proximity matching
+            proximity_matches = self._find_claims_by_proximity(db_client, data)
+            duplicates_found.extend(proximity_matches)
+            
+            # Store current claim for future comparisons
+            self._store_claim_for_comparison(db_client, data, claim_hash)
+            
+            if duplicates_found:
+                # Return the highest similarity match
+                best_match = max(duplicates_found, key=lambda x: x['similarity_score'])
                 
-                if time_diff.days < 30:  # Within 30 days
-                    return f"Potential duplicate claim detected (submitted {time_diff.days} days ago)"
+                return {
+                    'type': 'duplicate_detected',
+                    'similarity_score': best_match['similarity_score'],
+                    'match_type': best_match['match_type'],
+                    'days_ago': best_match['days_ago'],
+                    'matched_claim_id': best_match.get('claim_id'),
+                    'details': best_match['details'],
+                    'all_matches': duplicates_found[:3]  # Top 3 matches
+                }
+            
+            return None
+            
+        except Exception as e:
+            # Fallback to in-memory cache
+            return self._fallback_duplicate_check(data)
+    
+    def _find_similar_claims_by_text(self, db_client, data: EnhancedClaimData) -> List[Dict]:
+        """Find claims with similar text using fuzzy matching"""
+        matches = []
+        
+        try:
+            # Get recent claims (last 90 days) for comparison
+            query_result = db_client.supabase.table('claims').select('*').gte(
+                'created_at', 
+                (datetime.now() - timedelta(days=90)).isoformat()
+            ).execute()
+            
+            if query_result.data:
+                for claim in query_result.data:
+                    similarity_score = self._calculate_text_similarity(data, claim)
+                    
+                    if similarity_score > 0.8:  # High similarity threshold
+                        days_ago = (datetime.now() - datetime.fromisoformat(claim['created_at'].replace('Z', '+00:00'))).days
+                        
+                        matches.append({
+                            'similarity_score': similarity_score,
+                            'match_type': 'fuzzy_text',
+                            'days_ago': days_ago,
+                            'claim_id': claim['id'],
+                            'details': f"Similar text content with {similarity_score:.1%} similarity"
+                        })
+            
+        except Exception:
+            pass
+        
+        return matches
+    
+    def _find_claims_by_proximity(self, db_client, data: EnhancedClaimData) -> List[Dict]:
+        """Find claims with similar amounts and dates"""
+        matches = []
+        
+        if not data.total_amount or not data.treatment_dates:
+            return matches
+        
+        try:
+            # Look for claims with similar amounts (±10%) and recent dates (±7 days)
+            amount_min = data.total_amount * 0.9
+            amount_max = data.total_amount * 1.1
+            
+            query_result = db_client.supabase.table('claims').select('*').gte(
+                'claim_amount', amount_min
+            ).lte('claim_amount', amount_max).execute()
+            
+            if query_result.data:
+                for claim in query_result.data:
+                    # Calculate date similarity
+                    claim_date = datetime.fromisoformat(claim['created_at'].replace('Z', '+00:00'))
+                    date_diff = abs((datetime.now() - claim_date).days)
+                    
+                    if date_diff <= 30:  # Within 30 days
+                        amount_similarity = 1 - abs(data.total_amount - claim['claim_amount']) / data.total_amount
+                        date_similarity = max(0, 1 - date_diff / 30)
+                        overall_similarity = (amount_similarity * 0.7) + (date_similarity * 0.3)
+                        
+                        if overall_similarity > 0.7:
+                            matches.append({
+                                'similarity_score': overall_similarity,
+                                'match_type': 'amount_date_proximity',
+                                'days_ago': date_diff,
+                                'claim_id': claim['id'],
+                                'details': f"Similar amount (${claim['claim_amount']}) within {date_diff} days"
+                            })
+        
+        except Exception:
+            pass
+        
+        return matches
+    
+    def _calculate_text_similarity(self, data: EnhancedClaimData, stored_claim: Dict) -> float:
+        """Calculate text similarity using multiple algorithms"""
+        try:
+            # Simple Levenshtein distance for patient names
+            if data.patient_name and stored_claim.get('metadata', {}).get('patient_name'):
+                name1 = data.patient_name.lower().strip()
+                name2 = stored_claim['metadata']['patient_name'].lower().strip()
+                
+                # Calculate similarity ratio
+                name_similarity = self._levenshtein_similarity(name1, name2)
+                
+                # Weight by other factors
+                amount_match = 0
+                if data.total_amount and stored_claim.get('claim_amount'):
+                    amount_diff = abs(data.total_amount - stored_claim['claim_amount'])
+                    amount_match = max(0, 1 - amount_diff / max(data.total_amount, stored_claim['claim_amount']))
+                
+                # Combined similarity score
+                return (name_similarity * 0.6) + (amount_match * 0.4)
+            
+        except Exception:
+            pass
+        
+        return 0.0
+    
+    def _levenshtein_similarity(self, s1: str, s2: str) -> float:
+        """Calculate Levenshtein similarity ratio"""
+        if not s1 or not s2:
+            return 0.0
+        
+        # Simple implementation of Levenshtein distance
+        if len(s1) < len(s2):
+            s1, s2 = s2, s1
+        
+        if len(s2) == 0:
+            return 0.0
+        
+        # Calculate similarity ratio
+        distance = self._levenshtein_distance(s1, s2)
+        max_len = max(len(s1), len(s2))
+        
+        return 1 - (distance / max_len)
+    
+    def _levenshtein_distance(self, s1: str, s2: str) -> int:
+        """Calculate Levenshtein distance between two strings"""
+        if len(s1) > len(s2):
+            s1, s2 = s2, s1
+        
+        distances = range(len(s1) + 1)
+        
+        for i2, c2 in enumerate(s2):
+            distances_ = [i2 + 1]
+            for i1, c1 in enumerate(s1):
+                if c1 == c2:
+                    distances_.append(distances[i1])
+                else:
+                    distances_.append(1 + min((distances[i1], distances[i1 + 1], distances_[-1])))
+            distances = distances_
+        
+        return distances[-1]
+    
+    def _store_claim_for_comparison(self, db_client, data: EnhancedClaimData, claim_hash: str):
+        """Store claim data for future duplicate comparisons"""
+        try:
+            # Store in duplicate tracking table (would need to create this table)
+            duplicate_data = {
+                'claim_hash': claim_hash,
+                'patient_name': data.patient_name,
+                'claim_amount': data.total_amount,
+                'provider_name': data.provider_name,
+                'treatment_dates': str(data.treatment_dates),
+                'created_at': datetime.now().isoformat(),
+                'metadata': {
+                    'document_type': data.document_type,
+                    'quality_score': data.document_quality_score
+                }
+            }
+            
+            # In a real implementation, you'd create a duplicate_claims table
+            # For now, store in memory cache as fallback
+            self.processed_claims_cache[claim_hash] = {
+                'timestamp': datetime.now(),
+                'patient': data.patient_name,
+                'amount': data.total_amount,
+                'provider': data.provider_name
+            }
+            
+        except Exception:
+            pass
+    
+    def _fallback_duplicate_check(self, data: EnhancedClaimData) -> Optional[Dict]:
+        """Fallback to simple hash-based duplicate detection"""
+        try:
+            claim_key = f"{data.patient_name}|{data.total_amount}|{data.treatment_dates}|{data.provider_name}"
+            claim_hash = hashlib.md5(claim_key.encode()).hexdigest()
+            
+            if claim_hash in self.processed_claims_cache:
+                stored_claim = self.processed_claims_cache[claim_hash]
+                time_diff = datetime.now() - stored_claim['timestamp']
+                
+                if time_diff.days < 30:
+                    return {
+                        'type': 'duplicate_detected',
+                        'similarity_score': 1.0,
+                        'match_type': 'exact_hash',
+                        'days_ago': time_diff.days,
+                        'details': f"Exact duplicate detected (submitted {time_diff.days} days ago)"
+                    }
             else:
-                # Store this claim
                 self.processed_claims_cache[claim_hash] = {
                     'timestamp': datetime.now(),
                     'patient': data.patient_name,

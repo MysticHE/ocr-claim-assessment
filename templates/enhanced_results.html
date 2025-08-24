@@ -10,6 +10,10 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/components.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/responsive.css') }}">
     
+    <!-- Chart.js for interactive visualizations -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+    
 </head>
 
 <body>
@@ -34,74 +38,439 @@
                 <p class="page-subtitle">Comprehensive analysis with AI-powered insights</p>
             </div>
 
-            <!-- Workflow Progress -->
-            <div class="workflow-progress">
-                <h3 class="workflow-title">
-                    <span>AI Processing Workflow</span>
-                    <span class="ai-badge">10-Step Pipeline</span>
-                </h3>
-                
-                {% if result.workflow_steps %}
-                    {% for step in result.workflow_steps %}
-                    <div class="workflow-step">
-                        <div class="step-indicator {{ step.status }}">
-                            {% if step.status == 'completed' %}✓
-                            {% elif step.status == 'failed' %}✗
-                            {% elif step.status == 'skipped' %}−
-                            {% elif step.status == 'in_progress' %}⋯
-                            {% else %}{{ loop.index }}
+            <!-- Executive Summary Dashboard -->
+            <div class="executive-summary">
+                <div class="summary-header">
+                    <h2 class="summary-title">Executive Summary</h2>
+                    <div class="processing-badge">
+                        <span class="processing-time">{{ "%.2f"|format(result.processing_time_ms / 1000) }}s</span>
+                        <span class="processing-label">Processing Time</span>
+                    </div>
+                </div>
+
+                <div class="summary-cards">
+                    <!-- Decision Status Card -->
+                    <div class="summary-card decision-card {{ result.status }}">
+                        <div class="card-icon">
+                            {% if result.status == 'approved' %}
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M9 12l2 2 4-4"/>
+                                <circle cx="12" cy="12" r="9"/>
+                            </svg>
+                            {% elif result.status == 'rejected' %}
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="9"/>
+                                <line x1="15" y1="9" x2="9" y2="15"/>
+                                <line x1="9" y1="9" x2="15" y2="15"/>
+                            </svg>
+                            {% else %}
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="9"/>
+                                <line x1="12" y1="8" x2="12" y2="12"/>
+                                <line x1="12" y1="16" x2="12.01" y2="16"/>
+                            </svg>
                             {% endif %}
                         </div>
-                        <div class="step-content">
-                            <div class="step-name">{{ step.step_name|title|replace('_', ' ') }}</div>
+                        <div class="card-content">
+                            <div class="card-title">Final Decision</div>
+                            <div class="card-value {{ result.status }}">
+                                {% if result.status == 'approved' %}✓ APPROVED
+                                {% elif result.status == 'rejected' %}✗ REJECTED  
+                                {% elif result.status == 'review' %}⚠ REQUIRES REVIEW
+                                {% else %}{{ result.status|upper }}
+                                {% endif %}
+                            </div>
+                            <div class="card-subtitle">Confidence: {{ (result.confidence * 100)|round }}%</div>
+                        </div>
+                    </div>
+
+                    <!-- Risk Assessment Card -->
+                    {% set risk_score = ((result.fraud_findings|length * 0.3) + (result.validation_issues|length * 0.4) + ((1 - result.confidence) * 0.3)) %}
+                    <div class="summary-card risk-card">
+                        <div class="card-icon">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                                {% if risk_score <= 0.3 %}
+                                <path d="M9 12l2 2 4-4"/>
+                                {% elif risk_score <= 0.6 %}
+                                <line x1="12" y1="8" x2="12" y2="12"/>
+                                <line x1="12" y1="16" x2="12.01" y2="16"/>
+                                {% else %}
+                                <line x1="15" y1="9" x2="9" y2="15"/>
+                                <line x1="9" y1="9" x2="15" y2="15"/>
+                                {% endif %}
+                            </svg>
+                        </div>
+                        <div class="card-content">
+                            <div class="card-title">Risk Assessment</div>
+                            <div class="card-value risk-{{ 'low' if risk_score <= 0.3 else 'medium' if risk_score <= 0.6 else 'high' }}">
+                                {{ 'LOW RISK' if risk_score <= 0.3 else 'MEDIUM RISK' if risk_score <= 0.6 else 'HIGH RISK' }}
+                            </div>
+                            <div class="card-subtitle">{{ result.fraud_findings|length }} fraud indicators, {{ result.validation_issues|length }} validation issues</div>
+                        </div>
+                    </div>
+
+                    <!-- Document Analysis Card -->
+                    {% if result.document_classification %}
+                    <div class="summary-card document-card">
+                        <div class="card-icon">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                <polyline points="14,2 14,8 20,8"/>
+                                <line x1="16" y1="13" x2="8" y2="13"/>
+                                <line x1="16" y1="17" x2="8" y2="17"/>
+                                <polyline points="10,9 9,9 8,9"/>
+                            </svg>
+                        </div>
+                        <div class="card-content">
+                            <div class="card-title">Document Type</div>
+                            <div class="card-value">{{ result.document_classification.document_type|upper|replace('_', ' ') }}</div>
+                            <div class="card-subtitle">Classification: {{ (result.document_classification.confidence * 100)|round }}% confident</div>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Quality Score Card -->
+                    {% if result.quality_assessment %}
+                    <div class="summary-card quality-card">
+                        <div class="card-icon">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26"/>
+                            </svg>
+                        </div>
+                        <div class="card-content">
+                            <div class="card-title">Quality Score</div>
+                            <div class="card-value quality-{{ 'excellent' if result.quality_assessment.quality_score.overall_score >= 0.9 else 'good' if result.quality_assessment.quality_score.overall_score >= 0.7 else 'fair' if result.quality_assessment.quality_score.overall_score >= 0.5 else 'poor' }}">
+                                {{ (result.quality_assessment.quality_score.overall_score * 100)|round }}%
+                            </div>
+                            <div class="card-subtitle">{{ 'Excellent' if result.quality_assessment.quality_score.overall_score >= 0.9 else 'Good' if result.quality_assessment.quality_score.overall_score >= 0.7 else 'Fair' if result.quality_assessment.quality_score.overall_score >= 0.5 else 'Poor' }} document quality</div>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- Next Actions -->
+                <div class="next-actions">
+                    <h3 class="actions-title">Recommended Next Steps</h3>
+                    <div class="action-items">
+                        {% if result.status == 'approved' %}
+                        <div class="action-item success">
+                            <span class="action-icon">✓</span>
+                            <span class="action-text">Claim can be processed for payment</span>
+                        </div>
+                        <div class="action-item info">
+                            <span class="action-icon">→</span>
+                            <span class="action-text">Forward to payment processing team</span>
+                        </div>
+                        {% elif result.status == 'rejected' %}
+                        <div class="action-item error">
+                            <span class="action-icon">✗</span>
+                            <span class="action-text">Claim rejected - notify claimant</span>
+                        </div>
+                        <div class="action-item warning">
+                            <span class="action-icon">!</span>
+                            <span class="action-text">Review rejection reasons and provide feedback</span>
+                        </div>
+                        {% elif result.status == 'review' %}
+                        <div class="action-item warning">
+                            <span class="action-icon">⚠</span>
+                            <span class="action-text">Manual review required by senior adjudicator</span>
+                        </div>
+                        <div class="action-item info">
+                            <span class="action-icon">→</span>
+                            <span class="action-text">Schedule review within 48 hours</span>
+                        </div>
+                        {% endif %}
+                        
+                        {% if result.validation_issues|length > 0 %}
+                        <div class="action-item warning">
+                            <span class="action-icon">!</span>
+                            <span class="action-text">Address {{ result.validation_issues|length }} validation issue(s)</span>
+                        </div>
+                        {% endif %}
+                        
+                        {% if result.fraud_findings|length > 0 %}
+                        <div class="action-item error">
+                            <span class="action-icon">🛡</span>
+                            <span class="action-text">Investigate {{ result.fraud_findings|length }} potential fraud indicator(s)</span>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Duplicate Detection Warning -->
+            {% if result.duplicate_detected %}
+            <div class="duplicate-warning">
+                <div class="warning-header">
+                    <div class="warning-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"/>
+                            <path d="M9 12l2 2 4-4"/>
+                            <path d="M16 12l-4-4"/>
+                        </svg>
+                    </div>
+                    <div class="warning-content">
+                        <h3 class="warning-title">Potential Duplicate Detected</h3>
+                        <p class="warning-subtitle">Similar claim found with {{ (result.duplicate_detected.similarity_score * 100)|round }}% similarity</p>
+                    </div>
+                    <div class="similarity-score">
+                        <div class="score-value">{{ (result.duplicate_detected.similarity_score * 100)|round }}%</div>
+                        <div class="score-label">Similarity</div>
+                    </div>
+                </div>
+
+                <div class="duplicate-details">
+                    <div class="match-info">
+                        <div class="info-item">
+                            <span class="info-label">Match Type:</span>
+                            <span class="info-value">{{ result.duplicate_detected.match_type|title|replace('_', ' ') }}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Submitted:</span>
+                            <span class="info-value">{{ result.duplicate_detected.days_ago }} days ago</span>
+                        </div>
+                        {% if result.duplicate_detected.matched_claim_id %}
+                        <div class="info-item">
+                            <span class="info-label">Claim ID:</span>
+                            <span class="info-value">#{{ result.duplicate_detected.matched_claim_id }}</span>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="match-details">
+                        <p class="details-text">{{ result.duplicate_detected.details }}</p>
+                        
+                        {% if result.duplicate_detected.all_matches %}
+                        <div class="all-matches">
+                            <h4 class="matches-title">All Similar Claims Found:</h4>
+                            {% for match in result.duplicate_detected.all_matches %}
+                            <div class="match-item">
+                                <div class="match-similarity">{{ (match.similarity_score * 100)|round }}%</div>
+                                <div class="match-info-text">
+                                    <span class="match-type">{{ match.match_type|title|replace('_', ' ') }}</span>
+                                    <span class="match-details-text">{{ match.details }}</span>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="duplicate-actions">
+                        <button class="btn btn-primary" onclick="approveDuplicate()">Approve as Legitimate</button>
+                        <button class="btn btn-secondary" onclick="flagForReview()">Flag for Manual Review</button>
+                        <button class="btn btn-error" onclick="rejectDuplicate()">Reject as Duplicate</button>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Interactive Workflow Progress -->
+            <div class="workflow-progress-interactive">
+                <div class="workflow-header">
+                    <h3 class="workflow-title">
+                        <span>AI Processing Workflow</span>
+                        <span class="ai-badge">10-Step Pipeline</span>
+                    </h3>
+                    
+                    <!-- Overall Progress Bar -->
+                    <div class="workflow-overall-progress">
+                        <div class="progress-info">
+                            <span class="progress-label">Overall Progress</span>
+                            <span class="progress-percentage" id="workflowOverallPercent">0%</span>
+                        </div>
+                        <div class="progress-track">
+                            <div class="progress-fill" id="workflowOverallFill" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                {% if result.workflow_steps %}
+                <div class="workflow-timeline">
+                    {% for step in result.workflow_steps %}
+                    <div class="workflow-step-interactive {{ step.status }}" data-step="{{ loop.index }}" data-animate="true">
+                        <!-- Step Connector Line -->
+                        {% if not loop.last %}
+                        <div class="step-connector {{ 'completed' if step.status == 'completed' else 'pending' }}"></div>
+                        {% endif %}
+                        
+                        <!-- Step Indicator with Animation -->
+                        <div class="step-indicator-interactive {{ step.status }}" data-status="{{ step.status }}">
+                            <div class="step-number">{{ loop.index }}</div>
+                            <div class="step-status-icon">
+                                {% if step.status == 'completed' %}
+                                <svg class="checkmark" width="24" height="24" viewBox="0 0 24 24">
+                                    <path class="checkmark-path" d="M9,12l2,2 4,-4" stroke="#fff" stroke-width="2" fill="none"/>
+                                </svg>
+                                {% elif step.status == 'failed' %}
+                                <svg width="24" height="24" viewBox="0 0 24 24">
+                                    <path d="M18,6L6,18M6,6l12,12" stroke="#fff" stroke-width="2"/>
+                                </svg>
+                                {% elif step.status == 'in_progress' %}
+                                <div class="loading-spinner"></div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <!-- Step Content -->
+                        <div class="step-content-interactive">
+                            <div class="step-header">
+                                <div class="step-name">{{ step.step_name|title|replace('_', ' ') }}</div>
+                                {% if step.duration_ms %}
+                                <div class="step-duration {{ 'fast' if step.duration_ms < 1000 else 'normal' if step.duration_ms < 3000 else 'slow' }}">
+                                    {{ "%.2f"|format(step.duration_ms / 1000) }}s
+                                </div>
+                                {% endif %}
+                            </div>
+                            
                             <div class="step-description">{{ step.output_summary or 'Processing step' }}</div>
-                            {% if step.duration_ms %}
-                            <div class="step-time">Completed in {{ "%.2f"|format(step.duration_ms / 1000) }}s</div>
+                            
+                            <!-- Step-specific Visualizations -->
+                            {% if step.confidence_score is defined %}
+                            <div class="step-confidence">
+                                <div class="confidence-mini-bar">
+                                    <div class="confidence-mini-fill" style="width: {{ (step.confidence_score * 100)|round }}%" data-animate="slideIn"></div>
+                                </div>
+                                <span class="confidence-text">{{ (step.confidence_score * 100)|round }}% confidence</span>
+                            </div>
+                            {% endif %}
+                            
+                            {% if step.step_name == 'quality_assessment' and result.quality_assessment %}
+                            <div class="step-metrics">
+                                <div class="mini-metric">
+                                    <span class="mini-value">{{ (result.quality_assessment.quality_score.overall_score * 100)|round }}%</span>
+                                    <span class="mini-label">Quality</span>
+                                </div>
+                            </div>
+                            {% endif %}
+                            
+                            {% if step.step_name == 'classification' and result.document_classification %}
+                            <div class="step-metrics">
+                                <div class="mini-metric">
+                                    <span class="mini-value">{{ (result.document_classification.confidence * 100)|round }}%</span>
+                                    <span class="mini-label">Confidence</span>
+                                </div>
+                                <div class="mini-metric">
+                                    <span class="mini-value">{{ result.document_classification.document_type|title|replace('_', ' ') }}</span>
+                                    <span class="mini-label">Type</span>
+                                </div>
+                            </div>
                             {% endif %}
                         </div>
                     </div>
                     {% endfor %}
+                </div>
+                
+                <!-- Workflow Summary Statistics -->
+                <div class="workflow-stats">
+                    <div class="stat-item">
+                        <div class="stat-value" id="totalSteps">{{ result.workflow_steps|length }}</div>
+                        <div class="stat-label">Total Steps</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="completedSteps">{{ result.workflow_steps|selectattr('status', 'equalto', 'completed')|list|length }}</div>
+                        <div class="stat-label">Completed</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="totalTime">{{ "%.2f"|format((result.workflow_steps|sum(attribute='duration_ms') or 0) / 1000) }}s</div>
+                        <div class="stat-label">Total Time</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="avgTime">{{ "%.2f"|format(((result.workflow_steps|sum(attribute='duration_ms') or 0) / result.workflow_steps|length) / 1000) }}s</div>
+                        <div class="stat-label">Avg Step Time</div>
+                    </div>
+                </div>
+                
                 {% else %}
-                <div class="alert alert-info">
-                    No detailed workflow information available. This may be due to enhanced processing not being fully completed.
+                <div class="alert alert-info workflow-fallback" data-animate="fadeIn">
+                    <div class="alert-icon">ℹ</div>
+                    <div class="alert-content">
+                        No detailed workflow information available. This may be due to enhanced processing not being fully completed.
+                    </div>
                 </div>
                 {% endif %}
             </div>
 
-            <!-- AI Analysis Results Grid -->
-            <div class="ai-results-grid">
+            <!-- Detailed Analysis Section with Progressive Disclosure -->
+            <div class="detailed-analysis">
+                <div class="analysis-header">
+                    <h3 class="analysis-title">Detailed AI Analysis</h3>
+                    <div class="view-controls">
+                        <button class="view-toggle active" data-view="essential">Essential View</button>
+                        <button class="view-toggle" data-view="detailed">Complete Analysis</button>
+                    </div>
+                </div>
+
+                <!-- AI Analysis Results Grid -->
+                <div class="ai-results-grid">
                 <!-- Document Classification -->
                 {% if result.document_classification %}
-                <div class="ai-result-card">
+                <div class="ai-result-card" data-importance="medium" data-category="essential">
                     <div class="ai-result-header">
-                        <h4 class="ai-result-title">Document Classification</h4>
-                        <span class="ai-badge">AI Powered</span>
-                    </div>
-                    
-                    <div class="detail-item">
-                        <div class="field-label">Document Type</div>
-                        <div class="field-value">{{ result.document_classification.document_type|title }}</div>
-                    </div>
-                    
-                    <div class="confidence-display">
-                        <div class="confidence-label">Classification Confidence</div>
-                        <div class="confidence-bar-container">
-                            <div class="confidence-fill confidence-{{ 'excellent' if result.document_classification.confidence >= 0.9 else 'good' if result.document_classification.confidence >= 0.7 else 'fair' if result.document_classification.confidence >= 0.5 else 'poor' }}" 
-                                 style="width: {{ (result.document_classification.confidence * 100)|round }}%"></div>
+                        <div class="card-header-content">
+                            <h4 class="ai-result-title">Document Classification</h4>
+                            <span class="importance-indicator medium">MEDIUM</span>
                         </div>
-                        <div class="confidence-text">{{ (result.document_classification.confidence * 100)|round }}%</div>
-                    </div>
-                    
-                    {% if result.document_classification.features_detected %}
-                    <div class="detail-item mt-3">
-                        <div class="field-label">Key Features Detected</div>
-                        <div class="field-value">
-                            {% for feature in result.document_classification.features_detected[:3] %}
-                                <span class="badge badge-secondary me-1">{{ feature }}</span>
-                            {% endfor %}
+                        <div class="card-controls">
+                            <span class="ai-badge">AI Powered</span>
+                            <button class="expand-toggle" data-target="classification-details">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M6 9l6 6 6-6"/>
+                                </svg>
+                            </button>
                         </div>
                     </div>
-                    {% endif %}
+                    
+                    <!-- Always Visible Summary -->
+                    <div class="card-summary">
+                        <div class="summary-row">
+                            <span class="summary-label">Document Type:</span>
+                            <span class="summary-value">{{ result.document_classification.document_type|title|replace('_', ' ') }}</span>
+                        </div>
+                        <div class="summary-row">
+                            <span class="summary-label">Confidence:</span>
+                            <span class="summary-value confidence-{{ 'excellent' if result.document_classification.confidence >= 0.9 else 'good' if result.document_classification.confidence >= 0.7 else 'fair' if result.document_classification.confidence >= 0.5 else 'poor' }}">
+                                {{ (result.document_classification.confidence * 100)|round }}%
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <!-- Expandable Details -->
+                    <div class="card-details collapsed" id="classification-details">
+                        <div class="confidence-display">
+                            <div class="confidence-label">Classification Confidence</div>
+                            <div class="confidence-bar-container">
+                                <div class="confidence-fill confidence-{{ 'excellent' if result.document_classification.confidence >= 0.9 else 'good' if result.document_classification.confidence >= 0.7 else 'fair' if result.document_classification.confidence >= 0.5 else 'poor' }}" 
+                                     style="width: {{ (result.document_classification.confidence * 100)|round }}%"></div>
+                            </div>
+                            <div class="confidence-text">{{ (result.document_classification.confidence * 100)|round }}%</div>
+                        </div>
+                        
+                        {% if result.document_classification.features_detected %}
+                        <div class="detail-item">
+                            <div class="field-label">Key Features Detected</div>
+                            <div class="field-value">
+                                {% for feature in result.document_classification.features_detected %}
+                                    <span class="badge badge-secondary">{{ feature }}</span>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        {% if result.document_classification.reasoning %}
+                        <div class="detail-item">
+                            <div class="field-label">AI Reasoning</div>
+                            <div class="field-value">
+                                <ul class="reasoning-list">
+                                    {% for reason in result.document_classification.reasoning %}
+                                    <li>{{ reason }}</li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
                 </div>
                 {% endif %}
 
@@ -113,45 +482,78 @@
                         <span class="ai-badge">Computer Vision</span>
                     </div>
                     
-                    <div class="confidence-display">
-                        <div class="confidence-label">Overall Quality Score</div>
-                        <div class="confidence-bar-container">
-                            <div class="confidence-fill confidence-{{ 'excellent' if result.quality_assessment.quality_score.overall_score >= 0.9 else 'good' if result.quality_assessment.quality_score.overall_score >= 0.7 else 'fair' if result.quality_assessment.quality_score.overall_score >= 0.5 else 'poor' }}" 
-                                 style="width: {{ (result.quality_assessment.quality_score.overall_score * 100)|round }}%"></div>
+                    <!-- Interactive Quality Dashboard -->
+                    <div class="interactive-quality-dashboard">
+                        <!-- Main Quality Score Gauge -->
+                        <div class="quality-gauge-container">
+                            <div class="quality-gauge-wrapper">
+                                <canvas id="overallQualityGauge" width="200" height="120"></canvas>
+                                <div class="gauge-info">
+                                    <div class="gauge-value" id="overallQualityValue">{{ (result.quality_assessment.quality_score.overall_score * 100)|round }}%</div>
+                                    <div class="gauge-label">Overall Quality</div>
+                                </div>
+                            </div>
                         </div>
-                        <div class="confidence-text">{{ (result.quality_assessment.quality_score.overall_score * 100)|round }}%</div>
-                    </div>
-                    
-                    <div class="quality-metrics">
-                        {% if result.quality_assessment.quality_score.readability_score %}
-                        <div class="quality-metric">
-                            <div class="quality-metric-value">{{ (result.quality_assessment.quality_score.readability_score * 100)|round }}%</div>
-                            <div class="quality-metric-label">Readability</div>
-                        </div>
-                        {% endif %}
                         
-                        {% if result.quality_assessment.quality_score.clarity_score %}
-                        <div class="quality-metric">
-                            <div class="quality-metric-value">{{ (result.quality_assessment.quality_score.clarity_score * 100)|round }}%</div>
-                            <div class="quality-metric-label">Clarity</div>
+                        <!-- Interactive Quality Metrics Grid -->
+                        <div class="quality-metrics-interactive">
+                            {% if result.quality_assessment.quality_score.readability_score %}
+                            <div class="quality-metric-interactive" data-animate="true">
+                                <div class="metric-circle" data-percent="{{ (result.quality_assessment.quality_score.readability_score * 100)|round }}">
+                                    <div class="metric-circle-inner">
+                                        <span class="metric-value">{{ (result.quality_assessment.quality_score.readability_score * 100)|round }}%</span>
+                                    </div>
+                                </div>
+                                <div class="metric-label">Readability</div>
+                                <div class="metric-status {{ 'excellent' if result.quality_assessment.quality_score.readability_score >= 0.9 else 'good' if result.quality_assessment.quality_score.readability_score >= 0.7 else 'fair' if result.quality_assessment.quality_score.readability_score >= 0.5 else 'poor' }}">
+                                    {{ 'Excellent' if result.quality_assessment.quality_score.readability_score >= 0.9 else 'Good' if result.quality_assessment.quality_score.readability_score >= 0.7 else 'Fair' if result.quality_assessment.quality_score.readability_score >= 0.5 else 'Poor' }}
+                                </div>
+                            </div>
+                            {% endif %}
+                            
+                            {% if result.quality_assessment.quality_score.clarity_score %}
+                            <div class="quality-metric-interactive" data-animate="true">
+                                <div class="metric-circle" data-percent="{{ (result.quality_assessment.quality_score.clarity_score * 100)|round }}">
+                                    <div class="metric-circle-inner">
+                                        <span class="metric-value">{{ (result.quality_assessment.quality_score.clarity_score * 100)|round }}%</span>
+                                    </div>
+                                </div>
+                                <div class="metric-label">Clarity</div>
+                                <div class="metric-status {{ 'excellent' if result.quality_assessment.quality_score.clarity_score >= 0.9 else 'good' if result.quality_assessment.quality_score.clarity_score >= 0.7 else 'fair' if result.quality_assessment.quality_score.clarity_score >= 0.5 else 'poor' }}">
+                                    {{ 'Excellent' if result.quality_assessment.quality_score.clarity_score >= 0.9 else 'Good' if result.quality_assessment.quality_score.clarity_score >= 0.7 else 'Fair' if result.quality_assessment.quality_score.clarity_score >= 0.5 else 'Poor' }}
+                                </div>
+                            </div>
+                            {% endif %}
+                            
+                            {% if result.quality_assessment.quality_score.completeness_score %}
+                            <div class="quality-metric-interactive" data-animate="true">
+                                <div class="metric-circle" data-percent="{{ (result.quality_assessment.quality_score.completeness_score * 100)|round }}">
+                                    <div class="metric-circle-inner">
+                                        <span class="metric-value">{{ (result.quality_assessment.quality_score.completeness_score * 100)|round }}%</span>
+                                    </div>
+                                </div>
+                                <div class="metric-label">Completeness</div>
+                                <div class="metric-status {{ 'excellent' if result.quality_assessment.quality_score.completeness_score >= 0.9 else 'good' if result.quality_assessment.quality_score.completeness_score >= 0.7 else 'fair' if result.quality_assessment.quality_score.completeness_score >= 0.5 else 'poor' }}">
+                                    {{ 'Excellent' if result.quality_assessment.quality_score.completeness_score >= 0.9 else 'Good' if result.quality_assessment.quality_score.completeness_score >= 0.7 else 'Fair' if result.quality_assessment.quality_score.completeness_score >= 0.5 else 'Poor' }}
+                                </div>
+                            </div>
+                            {% endif %}
                         </div>
-                        {% endif %}
-                        
-                        {% if result.quality_assessment.quality_score.completeness_score %}
-                        <div class="quality-metric">
-                            <div class="quality-metric-value">{{ (result.quality_assessment.quality_score.completeness_score * 100)|round }}%</div>
-                            <div class="quality-metric-label">Completeness</div>
-                        </div>
-                        {% endif %}
                     </div>
                     
                     {% if result.quality_assessment.is_acceptable %}
-                    <div class="alert alert-success">
-                        <strong>Quality Status:</strong> Document meets quality standards for processing
+                    <div class="alert alert-success quality-status-alert" data-animate="fadeIn">
+                        <div class="alert-icon">✓</div>
+                        <div class="alert-content">
+                            <strong>Quality Status:</strong> Document meets quality standards for processing
+                        </div>
                     </div>
                     {% else %}
-                    <div class="alert alert-warning">
-                        <strong>Quality Status:</strong> Document quality may affect processing accuracy
+                    <div class="alert alert-warning quality-status-alert" data-animate="fadeIn">
+                        <div class="alert-icon">⚠</div>
+                        <div class="alert-content">
+                            <strong>Quality Status:</strong> Document quality may affect processing accuracy
+                        </div>
                     </div>
                     {% endif %}
                 </div>
@@ -178,59 +580,94 @@
 
                 <!-- Data Validation -->
                 {% if result.validation_issues is defined %}
-                <div class="ai-result-card">
+                <div class="ai-result-card" data-importance="high" data-category="essential">
                     <div class="ai-result-header">
-                        <h4 class="ai-result-title">Data Validation</h4>
-                        <span class="ai-badge">Rule Engine</span>
-                    </div>
-                    
-                    <!-- Validation Summary -->
-                    {% if result.validation_issues|length > 0 %}
-                    <div class="alert alert-warning">
-                        <strong>Validation failed - {{ result.validation_issues|length }} issues</strong>
-                        <ul class="mt-2 mb-0">
-                            {% for issue in result.validation_issues %}
-                            <li>{{ issue }}</li>
-                            {% endfor %}
-                        </ul>
-                    </div>
-                    {% else %}
-                    <div class="alert alert-success">
-                        <strong>All validation checks passed</strong>
-                    </div>
-                    {% endif %}
-                    
-                    <!-- Classification Confidence Details -->
-                    {% if result.document_classification %}
-                    <div class="detail-item mt-3">
-                        <div class="field-label">Classification Confidence Threshold</div>
-                        <div class="field-value">
-                            <div class="confidence-threshold-info">
-                                <div class="threshold-requirement">
-                                    <strong>Required:</strong> ≥70% (0.7) to pass validation
-                                </div>
-                                <div class="current-score {{ 'pass' if result.document_classification.confidence >= 0.7 else 'fail' }}">
-                                    <strong>Current:</strong> {{ (result.document_classification.confidence * 100)|round }}% 
-                                    ({{ "✓ Pass" if result.document_classification.confidence >= 0.7 else "✗ Fail" }})
-                                </div>
-                            </div>
+                        <div class="card-header-content">
+                            <h4 class="ai-result-title">Data Validation</h4>
+                            <span class="importance-indicator high">HIGH</span>
+                        </div>
+                        <div class="card-controls">
+                            <span class="ai-badge">Rule Engine</span>
+                            <button class="expand-toggle" data-target="validation-details">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M6 9l6 6 6-6"/>
+                                </svg>
+                            </button>
                         </div>
                     </div>
                     
-                    <div class="detail-item">
-                        <div class="field-label">Confidence Scoring Method</div>
-                        <div class="field-value">
-                            <div class="scoring-method">
-                                <strong>Hybrid AI System:</strong>
-                                <ul class="scoring-details">
-                                    <li><strong>Primary:</strong> Mistral AI Vision Analysis (0.0-1.0)</li>
-                                    <li><strong>Fallback:</strong> Rule-based pattern matching (keywords 40% + patterns 40% + boost 20%)</li>
-                                    <li><strong>Quality Gate:</strong> AI result used if confidence ≥0.7, otherwise fallback to rules</li>
+                    <!-- Always Visible Summary -->
+                    <div class="card-summary">
+                        {% if result.validation_issues|length > 0 %}
+                        <div class="validation-status failed">
+                            <span class="status-icon">⚠</span>
+                            <span class="status-text">{{ result.validation_issues|length }} validation issues found</span>
+                        </div>
+                        <div class="issue-preview">
+                            {% for issue in result.validation_issues[:2] %}
+                            <div class="issue-item">{{ issue }}</div>
+                            {% endfor %}
+                            {% if result.validation_issues|length > 2 %}
+                            <div class="issue-more">+{{ result.validation_issues|length - 2 }} more issues</div>
+                            {% endif %}
+                        </div>
+                        {% else %}
+                        <div class="validation-status passed">
+                            <span class="status-icon">✓</span>
+                            <span class="status-text">All validation checks passed</span>
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Expandable Details -->
+                    <div class="card-details collapsed" id="validation-details">
+                        {% if result.validation_issues|length > 0 %}
+                        <div class="detail-item">
+                            <div class="field-label">All Validation Issues</div>
+                            <div class="field-value">
+                                <ul class="issue-list">
+                                    {% for issue in result.validation_issues %}
+                                    <li class="issue-item-detailed">
+                                        <span class="issue-icon">!</span>
+                                        <span class="issue-text">{{ issue }}</span>
+                                    </li>
+                                    {% endfor %}
                                 </ul>
                             </div>
                         </div>
+                        {% endif %}
+                        
+                        {% if result.document_classification %}
+                        <div class="detail-item">
+                            <div class="field-label">Classification Confidence Requirements</div>
+                            <div class="field-value">
+                                <div class="confidence-threshold-info">
+                                    <div class="threshold-requirement">
+                                        <strong>Required:</strong> ≥70% (0.7) to pass validation
+                                    </div>
+                                    <div class="current-score {{ 'pass' if result.document_classification.confidence >= 0.7 else 'fail' }}">
+                                        <strong>Current:</strong> {{ (result.document_classification.confidence * 100)|round }}% 
+                                        ({{ "✓ Pass" if result.document_classification.confidence >= 0.7 else "✗ Fail" }})
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="detail-item">
+                            <div class="field-label">Scoring System</div>
+                            <div class="field-value">
+                                <div class="scoring-method">
+                                    <strong>Hybrid AI System:</strong>
+                                    <ul class="scoring-details">
+                                        <li><strong>Primary:</strong> Mistral AI Vision Analysis (0.0-1.0)</li>
+                                        <li><strong>Fallback:</strong> Rule-based pattern matching (keywords 40% + patterns 40% + boost 20%)</li>
+                                        <li><strong>Quality Gate:</strong> AI result used if confidence ≥0.7, otherwise fallback to rules</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
                     </div>
-                    {% endif %}
                 </div>
                 {% endif %}
 
@@ -258,6 +695,7 @@
                     {% endif %}
                 </div>
                 {% endif %}
+                </div>
             </div>
 
             <!-- Decision Summary -->
@@ -349,6 +787,396 @@
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
+        }
+
+        // Progressive Disclosure System
+        document.addEventListener('DOMContentLoaded', function() {
+            // View Toggle Controls
+            const viewToggles = document.querySelectorAll('.view-toggle');
+            const analysisGrid = document.querySelector('.ai-results-grid');
+
+            viewToggles.forEach(toggle => {
+                toggle.addEventListener('click', function() {
+                    // Update active toggle
+                    viewToggles.forEach(t => t.classList.remove('active'));
+                    this.classList.add('active');
+                    
+                    // Update grid view
+                    const view = this.dataset.view;
+                    if (analysisGrid) {
+                        analysisGrid.dataset.view = view;
+                    }
+                });
+            });
+
+            // Expand/Collapse Controls
+            const expandToggles = document.querySelectorAll('.expand-toggle');
+            
+            expandToggles.forEach(toggle => {
+                toggle.addEventListener('click', function() {
+                    const targetId = this.dataset.target;
+                    const targetElement = document.getElementById(targetId);
+                    
+                    if (targetElement) {
+                        const isCollapsed = targetElement.classList.contains('collapsed');
+                        
+                        if (isCollapsed) {
+                            targetElement.classList.remove('collapsed');
+                            targetElement.classList.add('expanded');
+                            this.classList.add('expanded');
+                        } else {
+                            targetElement.classList.remove('expanded');
+                            targetElement.classList.add('collapsed');
+                            this.classList.remove('expanded');
+                        }
+                    }
+                });
+            });
+
+            // Summary Cards Animation
+            const summaryCards = document.querySelectorAll('.summary-card');
+            summaryCards.forEach((card, index) => {
+                card.style.animationDelay = `${index * 0.1}s`;
+                card.classList.add('fade-in');
+            });
+
+            // Action Items Hover Effects
+            const actionItems = document.querySelectorAll('.action-item');
+            actionItems.forEach(item => {
+                item.addEventListener('mouseenter', function() {
+                    this.style.transform = 'translateX(4px)';
+                });
+                
+                item.addEventListener('mouseleave', function() {
+                    this.style.transform = 'translateX(0)';
+                });
+            });
+
+            // Auto-expand high priority items in detailed view
+            const detailedView = document.querySelector('[data-view="detailed"]');
+            if (detailedView && detailedView.classList.contains('active')) {
+                const highPriorityCards = document.querySelectorAll('[data-importance="high"] .expand-toggle');
+                highPriorityCards.forEach(toggle => {
+                    setTimeout(() => toggle.click(), 300);
+                });
+            }
+        });
+
+        // Performance monitoring
+        window.addEventListener('load', function() {
+            const loadTime = performance.now();
+            console.log(`Enhanced Results UI loaded in ${Math.round(loadTime)}ms`);
+            
+            // Initialize interactive visualizations
+            initializeInteractiveVisualizations();
+        });
+
+        // Interactive Visualizations
+        function initializeInteractiveVisualizations() {
+            initializeQualityGauge();
+            initializeCircularMetrics();
+            initializeWorkflowProgress();
+            initializeAnimatedElements();
+        }
+
+        // Quality Gauge Visualization
+        function initializeQualityGauge() {
+            const canvas = document.getElementById('overallQualityGauge');
+            if (!canvas) return;
+            
+            const ctx = canvas.getContext('2d');
+            const qualityValue = parseInt(document.getElementById('overallQualityValue').textContent);
+            
+            // Animate gauge
+            let currentValue = 0;
+            const targetValue = qualityValue;
+            const animationDuration = 2000;
+            const startTime = Date.now();
+            
+            function animateGauge() {
+                const elapsedTime = Date.now() - startTime;
+                const progress = Math.min(elapsedTime / animationDuration, 1);
+                
+                // Easing function
+                const easedProgress = 1 - Math.pow(1 - progress, 3);
+                currentValue = targetValue * easedProgress;
+                
+                drawGauge(ctx, canvas, currentValue);
+                
+                if (progress < 1) {
+                    requestAnimationFrame(animateGauge);
+                } else {
+                    // Final draw
+                    drawGauge(ctx, canvas, targetValue);
+                }
+            }
+            
+            animateGauge();
+        }
+
+        function drawGauge(ctx, canvas, value) {
+            const width = canvas.width;
+            const height = canvas.height;
+            const centerX = width / 2;
+            const centerY = height - 20;
+            const radius = 80;
+            
+            // Clear canvas
+            ctx.clearRect(0, 0, width, height);
+            
+            // Background arc
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, radius, Math.PI, 2 * Math.PI);
+            ctx.lineWidth = 12;
+            ctx.strokeStyle = '#f1f5f9';
+            ctx.lineCap = 'round';
+            ctx.stroke();
+            
+            // Progress arc
+            const angle = Math.PI + (Math.PI * value / 100);
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, radius, Math.PI, angle);
+            ctx.lineWidth = 12;
+            
+            // Gradient color based on value
+            let gradient = ctx.createLinearGradient(0, 0, width, 0);
+            if (value >= 90) {
+                gradient.addColorStop(0, '#10b981');
+                gradient.addColorStop(1, '#16a34a');
+            } else if (value >= 70) {
+                gradient.addColorStop(0, '#3b82f6');
+                gradient.addColorStop(1, '#2563eb');
+            } else if (value >= 50) {
+                gradient.addColorStop(0, '#f59e0b');
+                gradient.addColorStop(1, '#d97706');
+            } else {
+                gradient.addColorStop(0, '#ef4444');
+                gradient.addColorStop(1, '#dc2626');
+            }
+            
+            ctx.strokeStyle = gradient;
+            ctx.lineCap = 'round';
+            ctx.stroke();
+        }
+
+        // Circular Progress Metrics
+        function initializeCircularMetrics() {
+            const metrics = document.querySelectorAll('.metric-circle[data-percent]');
+            
+            metrics.forEach((metric, index) => {
+                const percent = parseInt(metric.dataset.percent);
+                animateCircularProgress(metric, percent, index * 200);
+            });
+        }
+
+        function animateCircularProgress(element, targetPercent, delay) {
+            setTimeout(() => {
+                let currentPercent = 0;
+                const increment = targetPercent / 60; // 60 frames for smooth animation
+                
+                function animate() {
+                    currentPercent = Math.min(currentPercent + increment, targetPercent);
+                    
+                    // Update the circular progress
+                    const circumference = 2 * Math.PI * 35; // radius of 35px
+                    const strokeDashoffset = circumference - (currentPercent / 100 * circumference);
+                    
+                    // Create or update SVG circle if not exists
+                    if (!element.querySelector('svg')) {
+                        const svg = document.createElement('svg');
+                        svg.innerHTML = `
+                            <circle cx="40" cy="40" r="35" fill="none" stroke="#e5e7eb" stroke-width="6"/>
+                            <circle class="progress-circle" cx="40" cy="40" r="35" fill="none" stroke-width="6" 
+                                    stroke-dasharray="${circumference}" stroke-dashoffset="${circumference}"
+                                    transform="rotate(-90 40 40)" stroke-linecap="round"/>
+                        `;
+                        svg.style.position = 'absolute';
+                        svg.style.top = '0';
+                        svg.style.left = '0';
+                        svg.style.width = '80px';
+                        svg.style.height = '80px';
+                        element.appendChild(svg);
+                    }
+                    
+                    const progressCircle = element.querySelector('.progress-circle');
+                    if (progressCircle) {
+                        progressCircle.style.strokeDashoffset = strokeDashoffset;
+                        
+                        // Color based on percentage
+                        if (currentPercent >= 90) {
+                            progressCircle.style.stroke = '#10b981';
+                        } else if (currentPercent >= 70) {
+                            progressCircle.style.stroke = '#3b82f6';
+                        } else if (currentPercent >= 50) {
+                            progressCircle.style.stroke = '#f59e0b';
+                        } else {
+                            progressCircle.style.stroke = '#ef4444';
+                        }
+                    }
+                    
+                    if (currentPercent < targetPercent) {
+                        requestAnimationFrame(animate);
+                    }
+                }
+                
+                animate();
+            }, delay);
+        }
+
+        // Workflow Progress Animation
+        function initializeWorkflowProgress() {
+            const workflowSteps = document.querySelectorAll('.workflow-step-interactive');
+            const totalSteps = workflowSteps.length;
+            const completedSteps = document.querySelectorAll('.workflow-step-interactive.completed').length;
+            
+            // Animate overall progress
+            const overallPercent = Math.round((completedSteps / totalSteps) * 100);
+            animateProgress('#workflowOverallFill', '#workflowOverallPercent', overallPercent);
+            
+            // Animate step indicators
+            workflowSteps.forEach((step, index) => {
+                const status = step.dataset.status || step.classList.contains('completed') ? 'completed' : 'pending';
+                
+                setTimeout(() => {
+                    step.style.opacity = '1';
+                    step.style.transform = 'translateX(0)';
+                    
+                    // Animate checkmark for completed steps
+                    if (status === 'completed') {
+                        const checkmark = step.querySelector('.checkmark-path');
+                        if (checkmark) {
+                            const length = checkmark.getTotalLength();
+                            checkmark.style.strokeDasharray = length;
+                            checkmark.style.strokeDashoffset = length;
+                            
+                            setTimeout(() => {
+                                checkmark.style.transition = 'stroke-dashoffset 0.5s ease';
+                                checkmark.style.strokeDashoffset = '0';
+                            }, 200);
+                        }
+                    }
+                }, index * 150);
+            });
+        }
+
+        function animateProgress(fillSelector, textSelector, targetPercent) {
+            const fillElement = document.querySelector(fillSelector);
+            const textElement = document.querySelector(textSelector);
+            
+            if (!fillElement || !textElement) return;
+            
+            let currentPercent = 0;
+            const increment = targetPercent / 60;
+            
+            function animate() {
+                currentPercent = Math.min(currentPercent + increment, targetPercent);
+                
+                fillElement.style.width = currentPercent + '%';
+                textElement.textContent = Math.round(currentPercent) + '%';
+                
+                if (currentPercent < targetPercent) {
+                    requestAnimationFrame(animate);
+                }
+            }
+            
+            setTimeout(animate, 500); // Delay start
+        }
+
+        // General Animation Elements
+        function initializeAnimatedElements() {
+            // Fade in animated elements
+            const fadeElements = document.querySelectorAll('[data-animate="fadeIn"]');
+            fadeElements.forEach((element, index) => {
+                element.style.opacity = '0';
+                element.style.transform = 'translateY(20px)';
+                
+                setTimeout(() => {
+                    element.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+                    element.style.opacity = '1';
+                    element.style.transform = 'translateY(0)';
+                }, index * 100 + 300);
+            });
+            
+            // Slide in elements
+            const slideElements = document.querySelectorAll('[data-animate="slideIn"]');
+            slideElements.forEach((element, index) => {
+                element.style.transform = 'translateX(-100%)';
+                
+                setTimeout(() => {
+                    element.style.transition = 'transform 0.8s cubic-bezier(0.4, 0, 0.2, 1)';
+                    element.style.transform = 'translateX(0)';
+                }, index * 150 + 500);
+            });
+            
+            // Initialize workflow steps with initial hidden state
+            const workflowSteps = document.querySelectorAll('.workflow-step-interactive[data-animate="true"]');
+            workflowSteps.forEach(step => {
+                step.style.opacity = '0';
+                step.style.transform = 'translateX(-30px)';
+                step.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+            });
+        }
+
+        // Duplicate Management Functions
+        function approveDuplicate() {
+            if (confirm('Are you sure you want to approve this as a legitimate claim despite the similarity to existing claims?')) {
+                // In production, this would make an API call to update the claim status
+                showToast('Claim approved as legitimate', 'success');
+                // Hide the duplicate warning
+                const warning = document.querySelector('.duplicate-warning');
+                if (warning) {
+                    warning.style.transition = 'all 0.3s ease';
+                    warning.style.opacity = '0';
+                    warning.style.transform = 'translateY(-20px)';
+                    setTimeout(() => warning.remove(), 300);
+                }
+            }
+        }
+
+        function flagForReview() {
+            if (confirm('Flag this claim for manual review due to potential duplication?')) {
+                showToast('Claim flagged for manual review', 'warning');
+                // Update UI to show flagged status
+                const warning = document.querySelector('.duplicate-warning');
+                if (warning) {
+                    warning.style.background = 'linear-gradient(135deg, #fff7ed 0%, #fef3c7 100%)';
+                    warning.style.borderColor = '#fbbf24';
+                    const title = warning.querySelector('.warning-title');
+                    if (title) title.textContent = 'Flagged for Manual Review';
+                }
+            }
+        }
+
+        function rejectDuplicate() {
+            if (confirm('Are you sure you want to reject this claim as a duplicate?')) {
+                showToast('Claim rejected as duplicate', 'error');
+                // Update decision status
+                const decisionStatus = document.querySelector('.decision-status');
+                if (decisionStatus) {
+                    decisionStatus.innerHTML = '✗ REJECTED';
+                    decisionStatus.className = 'decision-status rejected';
+                }
+            }
+        }
+
+        function showToast(message, type) {
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.innerHTML = `
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <span style="font-weight: 600;">${type === 'success' ? '✓' : type === 'warning' ? '⚠' : '✗'}</span>
+                    <span>${message}</span>
+                </div>
+            `;
+            
+            document.body.appendChild(toast);
+            
+            // Auto remove after 3 seconds
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateX(100%)';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
         }
     </script>
 </body>
