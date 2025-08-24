@@ -42,112 +42,138 @@
             <!-- Executive Summary Dashboard -->
             <div class="executive-summary">
                 <div class="summary-header">
-                    <h2 class="summary-title">Executive Summary</h2>
+                    <h2 class="summary-title">Claim Processing Summary</h2>
                     <div class="processing-badge">
                         <span class="processing-time">{{ "%.2f"|format(result.processing_time_ms / 1000) }}s</span>
                         <span class="processing-label">Processing Time</span>
                     </div>
                 </div>
 
-                <div class="summary-cards">
-                    <!-- Decision Status Card -->
-                    <div class="summary-card decision-card {{ result.status }}">
-                        <div class="card-icon">
-                            {% if result.status == 'approved' %}
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M9 12l2 2 4-4"/>
-                                <circle cx="12" cy="12" r="9"/>
-                            </svg>
-                            {% elif result.status == 'rejected' %}
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <circle cx="12" cy="12" r="9"/>
-                                <line x1="15" y1="9" x2="9" y2="15"/>
-                                <line x1="9" y1="9" x2="15" y2="15"/>
-                            </svg>
-                            {% else %}
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <circle cx="12" cy="12" r="9"/>
-                                <line x1="12" y1="8" x2="12" y2="12"/>
-                                <line x1="12" y1="16" x2="12.01" y2="16"/>
-                            </svg>
-                            {% endif %}
-                        </div>
-                        <div class="card-content">
-                            <div class="card-title">Final Decision</div>
-                            <div class="card-value {{ result.status }}">
-                                {% if result.status == 'approved' %}✓ APPROVED
-                                {% elif result.status == 'rejected' %}✗ REJECTED  
-                                {% elif result.status == 'review' %}⚠ REQUIRES REVIEW
-                                {% else %}{{ result.status|upper }}
-                                {% endif %}
+                <!-- Enhanced 5-Step Workflow in 2 Horizontal Rows -->
+                <div class="workflow-summary-enhanced">
+                    <!-- First Row: Steps 1-3 -->
+                    <div class="workflow-row first-row">
+                        <!-- Step 1: Document Classification -->
+                        {% if result.document_classification %}
+                        <div class="workflow-step-enhanced step-1 {{ 'completed' if result.document_classification else 'pending' }}">
+                            <div class="step-header">
+                                <div class="step-number">1</div>
+                                <div class="step-title">Document Classification</div>
                             </div>
-                            <div class="card-subtitle">Confidence: {{ ((result.confidence or 0) * 100)|round }}%</div>
+                            <div class="step-body">
+                                <div class="step-value">
+                                    {% set doc_type = result.document_classification.document_type|lower %}
+                                    {% if 'receipt' in doc_type or 'invoice' in doc_type %}
+                                        📧 Claims Receipt
+                                    {% elif 'referral' in doc_type or 'letter' in doc_type %}
+                                        📋 Referral Letter  
+                                    {% elif 'memo' in doc_type %}
+                                        📝 Memo
+                                    {% elif 'diagnostic' in doc_type or 'medical' in doc_type %}
+                                        🩺 Medical Document
+                                    {% elif 'prescription' in doc_type %}
+                                        💊 Prescription
+                                    {% else %}
+                                        📄 {{ result.document_classification.document_type|title|replace('_', ' ') }}
+                                    {% endif %}
+                                </div>
+                                <div class="step-confidence">{{ ((result.document_classification.confidence or 0) * 100)|round }}% confident</div>
+                            </div>
                         </div>
-                    </div>
+                        {% endif %}
 
-                    <!-- Risk Assessment Card -->
-                    {% set risk_score = ((result.fraud_findings|length * 0.3) + (result.validation_issues|length * 0.4) + ((1 - result.confidence) * 0.3)) %}
-                    <div class="summary-card risk-card">
-                        <div class="card-icon">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-                                {% if risk_score <= 0.3 %}
-                                <path d="M9 12l2 2 4-4"/>
-                                {% elif risk_score <= 0.6 %}
-                                <line x1="12" y1="8" x2="12" y2="12"/>
-                                <line x1="12" y1="16" x2="12.01" y2="16"/>
+                        <!-- Step 2: Claim Details Extraction -->
+                        <div class="workflow-step-enhanced step-2 {{ 'completed' if result.extracted_data else 'pending' }}">
+                            <div class="step-header">
+                                <div class="step-number">2</div>
+                                <div class="step-title">Claim Details Extraction</div>
+                            </div>
+                            <div class="step-body">
+                                {% if result.extracted_data %}
+                                <div class="step-details-compact">
+                                    {% if result.extracted_data.visit_date or result.extracted_data.incurred_date or result.extracted_data.date %}
+                                    <div class="detail-item-compact">📅 {{ result.extracted_data.visit_date or result.extracted_data.incurred_date or result.extracted_data.date or 'Not found' }}</div>
+                                    {% endif %}
+                                    {% if result.extracted_data.diagnosis or result.extracted_data.illness or result.extracted_data.claim_reason %}
+                                    <div class="detail-item-compact">🩺 {{ result.extracted_data.diagnosis or result.extracted_data.illness or result.extracted_data.claim_reason or 'Not found' }}</div>
+                                    {% endif %}
+                                    {% if result.extracted_data.amount or result.extracted_data.total_amount or result.extracted_data.claim_amount %}
+                                    <div class="detail-item-compact">💰 {{ result.extracted_data.amount or result.extracted_data.total_amount or result.extracted_data.claim_amount or 'Not found' }}</div>
+                                    {% endif %}
+                                </div>
                                 {% else %}
-                                <line x1="15" y1="9" x2="9" y2="15"/>
-                                <line x1="9" y1="9" x2="15" y2="15"/>
+                                <div class="step-value">❌ No claim details extracted</div>
                                 {% endif %}
-                            </svg>
-                        </div>
-                        <div class="card-content">
-                            <div class="card-title">Risk Assessment</div>
-                            <div class="card-value risk-{{ 'low' if risk_score <= 0.3 else 'medium' if risk_score <= 0.6 else 'high' }}">
-                                {{ 'LOW RISK' if risk_score <= 0.3 else 'MEDIUM RISK' if risk_score <= 0.6 else 'HIGH RISK' }}
                             </div>
-                            <div class="card-subtitle">{{ result.fraud_findings|length }} fraud indicators, {{ result.validation_issues|length }} validation issues</div>
+                        </div>
+
+                        <!-- Step 3: Structure Extraction -->
+                        <div class="workflow-step-enhanced step-3 {{ 'completed' if result.extracted_data else 'pending' }}">
+                            <div class="step-header">
+                                <div class="step-number">3</div>
+                                <div class="step-title">Structure Extraction</div>
+                            </div>
+                            <div class="step-body">
+                                {% if result.extracted_data %}
+                                <div class="step-value">✅ Data Structured</div>
+                                <div class="structure-info">{{ result.extracted_data.keys()|length }} fields extracted</div>
+                                {% else %}
+                                <div class="step-value">❌ Structure extraction failed</div>
+                                {% endif %}
+                            </div>
                         </div>
                     </div>
 
-                    <!-- Document Analysis Card -->
-                    {% if result.document_classification %}
-                    <div class="summary-card document-card">
-                        <div class="card-icon">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                                <polyline points="14,2 14,8 20,8"/>
-                                <line x1="16" y1="13" x2="8" y2="13"/>
-                                <line x1="16" y1="17" x2="8" y2="17"/>
-                                <polyline points="10,9 9,9 8,9"/>
-                            </svg>
-                        </div>
-                        <div class="card-content">
-                            <div class="card-title">Document Type</div>
-                            <div class="card-value">{{ result.document_classification.document_type|upper|replace('_', ' ') }}</div>
-                            <div class="card-subtitle">Classification: {{ ((result.document_classification.confidence or 0) * 100)|round }}% confident</div>
-                        </div>
-                    </div>
-                    {% endif %}
-
-                    <!-- Quality Score Card -->
-                    {% if result.quality_assessment %}
-                    <div class="summary-card quality-card">
-                        <div class="card-icon">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26"/>
-                            </svg>
-                        </div>
-                        <div class="card-content">
-                            <div class="card-title">Quality Score</div>
-                            <div class="card-value quality-{{ 'excellent' if (result.quality_assessment.quality_score.overall_score or 0) >= 0.9 else 'good' if (result.quality_assessment.quality_score.overall_score or 0) >= 0.7 else 'fair' if (result.quality_assessment.quality_score.overall_score or 0) >= 0.5 else 'poor' }}">
-                                {{ ((result.quality_assessment.quality_score.overall_score or 0) * 100)|round }}%
+                    <!-- Second Row: Steps 4-5 -->
+                    <div class="workflow-row second-row">
+                        <!-- Step 4: Fraud Detection -->
+                        <div class="workflow-step-enhanced step-4 {{ 'completed' if result.fraud_findings is defined else 'pending' }}">
+                            <div class="step-header">
+                                <div class="step-number">4</div>
+                                <div class="step-title">Fraud Detection</div>
                             </div>
-                            <div class="card-subtitle">{{ 'Excellent' if (result.quality_assessment.quality_score.overall_score or 0) >= 0.9 else 'Good' if (result.quality_assessment.quality_score.overall_score or 0) >= 0.7 else 'Fair' if (result.quality_assessment.quality_score.overall_score or 0) >= 0.5 else 'Poor' }} document quality</div>
+                            <div class="step-body">
+                                {% if result.fraud_findings is defined %}
+                                    {% if result.fraud_findings|length > 0 %}
+                                    <div class="step-value fraud-detected">🚨 {{ result.fraud_findings|length }} Issue(s) Detected</div>
+                                    <div class="fraud-summary">
+                                        {% if result.duplicate_detected %}
+                                        <span class="fraud-indicator">🔄 Duplicate</span>
+                                        {% endif %}
+                                        <span class="fraud-indicator">⚠ Requires Review</span>
+                                    </div>
+                                    {% else %}
+                                    <div class="step-value no-fraud">✅ Clean Validation</div>
+                                    <div class="fraud-summary">No suspicious patterns</div>
+                                    {% endif %}
+                                {% else %}
+                                <div class="step-value">⏳ Fraud check pending</div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Step 5: Final Decision -->
+                        <div class="workflow-step-enhanced step-5 decision-card {{ result.status }}">
+                            <div class="step-header">
+                                <div class="step-number">5</div>
+                                <div class="step-title">Final Decision</div>
+                            </div>
+                            <div class="step-body">
+                                <div class="step-value decision-value {{ result.status }}">
+                                    {% if result.status == 'approved' %}
+                                        ✅ APPROVED
+                                    {% elif result.status == 'rejected' %}
+                                        ❌ REJECTED
+                                    {% elif result.status == 'review' %}
+                                        ⚠️ REVIEW REQUIRED
+                                    {% else %}
+                                        ⏳ {{ result.status|upper }}
+                                    {% endif %}
+                                </div>
+                                <div class="decision-confidence">{{ ((result.confidence or 0) * 100)|round }}% confidence</div>
+                            </div>
                         </div>
                     </div>
-                    {% endif %}
                 </div>
 
                 <!-- Next Actions -->
@@ -404,338 +430,149 @@
                     </div>
                 </div>
 
-                <!-- AI Analysis Results Grid -->
-                <div class="ai-results-grid">
-                <!-- Document Classification -->
-                {% if result.document_classification %}
-                <div class="ai-result-card" data-importance="medium" data-category="essential">
-                    <div class="ai-result-header">
-                        <div class="card-header-content">
-                            <h4 class="ai-result-title">Document Classification</h4>
-                            <span class="importance-indicator medium">MEDIUM</span>
-                        </div>
-                        <div class="card-controls">
-                            <span class="ai-badge">AI Powered</span>
-                            <button class="expand-toggle" data-target="classification-details">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M6 9l6 6 6-6"/>
-                                </svg>
-                            </button>
-                        </div>
-                    </div>
-                    
-                    <!-- Always Visible Summary -->
-                    <div class="card-summary">
-                        <div class="summary-row">
-                            <span class="summary-label">Document Type:</span>
-                            <span class="summary-value">{{ result.document_classification.document_type|title|replace('_', ' ') }}</span>
-                        </div>
-                        <div class="summary-row">
-                            <span class="summary-label">Confidence:</span>
-                            <span class="summary-value confidence-{{ 'excellent' if (result.document_classification.confidence or 0) >= 0.9 else 'good' if (result.document_classification.confidence or 0) >= 0.7 else 'fair' if (result.document_classification.confidence or 0) >= 0.5 else 'poor' }}">
-                                {{ ((result.document_classification.confidence or 0) * 100)|round }}%
-                            </span>
-                        </div>
-                    </div>
-                    
-                    <!-- Expandable Details -->
-                    <div class="card-details collapsed" id="classification-details">
-                        <div class="confidence-display">
-                            <div class="confidence-label">Classification Confidence</div>
-                            <div class="confidence-bar-container">
-                                <div class="confidence-fill confidence-{{ 'excellent' if (result.document_classification.confidence or 0) >= 0.9 else 'good' if (result.document_classification.confidence or 0) >= 0.7 else 'fair' if (result.document_classification.confidence or 0) >= 0.5 else 'poor' }}" 
-                                     style="width: {{ ((result.document_classification.confidence or 0) * 100)|round }}%"></div>
+                <!-- Enhanced Analysis Cards - Two Horizontal Cards -->
+                <div class="analysis-cards-horizontal">
+                    <!-- Extracted Data Card -->
+                    {% if result.extracted_data %}
+                    <div class="analysis-card-wide extracted-data-card">
+                        <div class="card-header-wide">
+                            <div class="header-left">
+                                <h4 class="card-title-wide">📄 Extracted Data</h4>
+                                <span class="ai-badge">Smart Extraction</span>
                             </div>
-                            <div class="confidence-text">{{ ((result.document_classification.confidence or 0) * 100)|round }}%</div>
+                            <div class="header-right">
+                                <span class="data-count">{{ result.extracted_data.keys()|length }} fields extracted</span>
+                            </div>
                         </div>
                         
-                        {% if result.document_classification.features_detected %}
-                        <div class="detail-item">
-                            <div class="field-label">Key Features Detected</div>
-                            <div class="field-value">
-                                {% for feature in result.document_classification.features_detected %}
-                                    <span class="badge badge-secondary">{{ feature }}</span>
+                        <div class="card-content-wide">
+                            <div class="extracted-data-grid-wide">
+                                {% for key, value in result.extracted_data.items() %}
+                                <div class="extracted-field-wide">
+                                    <div class="field-label-wide">{{ key|replace('_', ' ')|title }}</div>
+                                    <div class="field-value-wide">{{ value }}</div>
+                                </div>
                                 {% endfor %}
                             </div>
                         </div>
-                        {% endif %}
-                        
-                        {% if result.document_classification.reasoning %}
-                        <div class="detail-item">
-                            <div class="field-label">AI Reasoning</div>
-                            <div class="field-value">
-                                <ul class="reasoning-list">
-                                    {% for reason in result.document_classification.reasoning %}
-                                    <li>{{ reason }}</li>
-                                    {% endfor %}
-                                </ul>
-                            </div>
-                        </div>
-                        {% endif %}
                     </div>
-                </div>
-                {% endif %}
+                    {% endif %}
 
-                <!-- Quality Assessment -->
-                {% if result.quality_assessment %}
-                <div class="ai-result-card">
-                    <div class="ai-result-header">
-                        <h4 class="ai-result-title">Quality Assessment</h4>
-                        <span class="ai-badge">Computer Vision</span>
-                    </div>
-                    
-                    <!-- Interactive Quality Dashboard -->
-                    <div class="interactive-quality-dashboard">
-                        <!-- Main Quality Score Gauge -->
-                        <div class="quality-gauge-container">
-                            <div class="quality-gauge-wrapper">
-                                <canvas id="overallQualityGauge" width="200" height="120"></canvas>
-                                <div class="gauge-info">
-                                    <div class="gauge-value" id="overallQualityValue">{{ ((result.quality_assessment.quality_score.overall_score or 0) * 100)|round }}%</div>
-                                    <div class="gauge-label">Overall Quality</div>
-                                </div>
+                    <!-- Data Validation Card -->
+                    {% if result.validation_issues is defined %}
+                    <div class="analysis-card-wide validation-card">
+                        <div class="card-header-wide">
+                            <div class="header-left">
+                                <h4 class="card-title-wide">✅ Data Validation</h4>
+                                <span class="ai-badge">Rule Engine</span>
+                            </div>
+                            <div class="header-right">
+                                {% if result.validation_issues|length > 0 %}
+                                <span class="validation-status-badge failed">{{ result.validation_issues|length }} issues found</span>
+                                {% else %}
+                                <span class="validation-status-badge passed">All checks passed</span>
+                                {% endif %}
                             </div>
                         </div>
                         
-                        <!-- Interactive Quality Metrics Grid -->
-                        <div class="quality-metrics-interactive">
-                            {% if result.quality_assessment.quality_score.readability_score %}
-                            <div class="quality-metric-interactive" data-animate="true">
-                                <div class="metric-circle" data-percent="{{ ((result.quality_assessment.quality_score.readability_score or 0) * 100)|round }}">
-                                    <div class="metric-circle-inner">
-                                        <span class="metric-value">{{ ((result.quality_assessment.quality_score.readability_score or 0) * 100)|round }}%</span>
+                        <div class="card-content-wide">
+                            <!-- Validation Status Section -->
+                            <div class="validation-overview">
+                                {% if result.validation_issues|length > 0 %}
+                                <div class="validation-status-wide failed">
+                                    <div class="status-icon-large">⚠</div>
+                                    <div class="status-content">
+                                        <div class="status-title">Validation Issues Detected</div>
+                                        <div class="status-subtitle">{{ result.validation_issues|length }} issues require attention</div>
                                     </div>
                                 </div>
-                                <div class="metric-label">Readability</div>
-                                <div class="metric-status {{ 'excellent' if (result.quality_assessment.quality_score.readability_score or 0) >= 0.9 else 'good' if (result.quality_assessment.quality_score.readability_score or 0) >= 0.7 else 'fair' if (result.quality_assessment.quality_score.readability_score or 0) >= 0.5 else 'poor' }}">
-                                    {{ 'Excellent' if (result.quality_assessment.quality_score.readability_score or 0) >= 0.9 else 'Good' if (result.quality_assessment.quality_score.readability_score or 0) >= 0.7 else 'Fair' if (result.quality_assessment.quality_score.readability_score or 0) >= 0.5 else 'Poor' }}
-                                </div>
-                            </div>
-                            {% endif %}
-                            
-                            {% if result.quality_assessment.quality_score.clarity_score %}
-                            <div class="quality-metric-interactive" data-animate="true">
-                                <div class="metric-circle" data-percent="{{ ((result.quality_assessment.quality_score.clarity_score or 0) * 100)|round }}">
-                                    <div class="metric-circle-inner">
-                                        <span class="metric-value">{{ ((result.quality_assessment.quality_score.clarity_score or 0) * 100)|round }}%</span>
+                                {% else %}
+                                <div class="validation-status-wide passed">
+                                    <div class="status-icon-large">✓</div>
+                                    <div class="status-content">
+                                        <div class="status-title">Validation Successful</div>
+                                        <div class="status-subtitle">All validation checks passed successfully</div>
                                     </div>
                                 </div>
-                                <div class="metric-label">Clarity</div>
-                                <div class="metric-status {{ 'excellent' if (result.quality_assessment.quality_score.clarity_score or 0) >= 0.9 else 'good' if (result.quality_assessment.quality_score.clarity_score or 0) >= 0.7 else 'fair' if (result.quality_assessment.quality_score.clarity_score or 0) >= 0.5 else 'poor' }}">
-                                    {{ 'Excellent' if (result.quality_assessment.quality_score.clarity_score or 0) >= 0.9 else 'Good' if (result.quality_assessment.quality_score.clarity_score or 0) >= 0.7 else 'Fair' if (result.quality_assessment.quality_score.clarity_score or 0) >= 0.5 else 'Poor' }}
-                                </div>
+                                {% endif %}
                             </div>
-                            {% endif %}
-                            
-                            {% if result.quality_assessment.quality_score.completeness_score %}
-                            <div class="quality-metric-interactive" data-animate="true">
-                                <div class="metric-circle" data-percent="{{ ((result.quality_assessment.quality_score.completeness_score or 0) * 100)|round }}">
-                                    <div class="metric-circle-inner">
-                                        <span class="metric-value">{{ ((result.quality_assessment.quality_score.completeness_score or 0) * 100)|round }}%</span>
+
+                            <!-- Detailed Validation Information -->
+                            <div class="validation-details-wide">
+                                {% if result.validation_issues|length > 0 %}
+                                <div class="validation-section">
+                                    <h5 class="section-title">Issues Found</h5>
+                                    <div class="issues-grid">
+                                        {% for issue in result.validation_issues %}
+                                        <div class="issue-item-wide">
+                                            <span class="issue-icon">!</span>
+                                            <span class="issue-text">{{ issue }}</span>
+                                        </div>
+                                        {% endfor %}
                                     </div>
                                 </div>
-                                <div class="metric-label">Completeness</div>
-                                <div class="metric-status {{ 'excellent' if (result.quality_assessment.quality_score.completeness_score or 0) >= 0.9 else 'good' if (result.quality_assessment.quality_score.completeness_score or 0) >= 0.7 else 'fair' if (result.quality_assessment.quality_score.completeness_score or 0) >= 0.5 else 'poor' }}">
-                                    {{ 'Excellent' if (result.quality_assessment.quality_score.completeness_score or 0) >= 0.9 else 'Good' if (result.quality_assessment.quality_score.completeness_score or 0) >= 0.7 else 'Fair' if (result.quality_assessment.quality_score.completeness_score or 0) >= 0.5 else 'Poor' }}
+                                {% endif %}
+                                
+                                {% if result.document_classification %}
+                                <div class="validation-section">
+                                    <h5 class="section-title">Classification Confidence</h5>
+                                    <div class="confidence-info-wide">
+                                        <div class="confidence-bar-wide">
+                                            <div class="confidence-progress" style="width: {{ ((result.document_classification.confidence or 0) * 100)|round }}%"></div>
+                                        </div>
+                                        <div class="confidence-details">
+                                            <span class="confidence-value">{{ ((result.document_classification.confidence or 0) * 100)|round }}%</span>
+                                            <span class="confidence-status {{ 'pass' if (result.document_classification.confidence or 0) >= 0.7 else 'fail' }}">
+                                                {{ "✓ Pass" if (result.document_classification.confidence or 0) >= 0.7 else "✗ Fail" }} (Required: ≥70%)
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endif %}
+
+                                <!-- Final Decision Integration -->
+                                <div class="validation-section">
+                                    <h5 class="section-title">Processing Decision</h5>
+                                    <div class="decision-summary-wide">
+                                        <div class="decision-status-wide {{ result.status }}">
+                                            <div class="decision-icon">
+                                                {% if result.status == 'approved' %}✅
+                                                {% elif result.status == 'rejected' %}❌
+                                                {% elif result.status == 'review' %}⚠️
+                                                {% else %}⏳
+                                                {% endif %}
+                                            </div>
+                                            <div class="decision-content">
+                                                <div class="decision-title">
+                                                    {% if result.status == 'approved' %}CLAIM APPROVED
+                                                    {% elif result.status == 'rejected' %}CLAIM REJECTED
+                                                    {% elif result.status == 'review' %}MANUAL REVIEW REQUIRED
+                                                    {% else %}{{ result.status|upper }}
+                                                    {% endif %}
+                                                </div>
+                                                <div class="decision-confidence-wide">{{ ((result.confidence or 0) * 100)|round }}% confidence</div>
+                                            </div>
+                                        </div>
+                                        
+                                        {% if result.decision_reasons %}
+                                        <div class="decision-reasons-wide">
+                                            <h6 class="reasons-title">Decision Factors:</h6>
+                                            <ul class="reasons-list">
+                                                {% for reason in result.decision_reasons %}
+                                                <li class="reason-item">{{ reason }}</li>
+                                                {% endfor %}
+                                            </ul>
+                                        </div>
+                                        {% endif %}
+                                    </div>
                                 </div>
                             </div>
-                            {% endif %}
-                        </div>
-                    </div>
-                    
-                    {% if result.quality_assessment.is_acceptable %}
-                    <div class="alert alert-success quality-status-alert" data-animate="fadeIn">
-                        <div class="alert-icon">✓</div>
-                        <div class="alert-content">
-                            <strong>Quality Status:</strong> Document meets quality standards for processing
-                        </div>
-                    </div>
-                    {% else %}
-                    <div class="alert alert-warning quality-status-alert" data-animate="fadeIn">
-                        <div class="alert-icon">⚠</div>
-                        <div class="alert-content">
-                            <strong>Quality Status:</strong> Document quality may affect processing accuracy
                         </div>
                     </div>
                     {% endif %}
                 </div>
-                {% endif %}
-
-                <!-- Extracted Data -->
-                {% if result.extracted_data %}
-                <div class="ai-result-card">
-                    <div class="ai-result-header">
-                        <h4 class="ai-result-title">Extracted Data</h4>
-                        <span class="ai-badge">Smart Extraction</span>
-                    </div>
-                    
-                    <div class="extracted-data-grid">
-                        {% for key, value in result.extracted_data.items() %}
-                        <div class="extracted-field">
-                            <div class="field-label">{{ key|replace('_', ' ')|title }}</div>
-                            <div class="field-value">{{ value }}</div>
-                        </div>
-                        {% endfor %}
-                    </div>
-                </div>
-                {% endif %}
-
-                <!-- Data Validation -->
-                {% if result.validation_issues is defined %}
-                <div class="ai-result-card" data-importance="high" data-category="essential">
-                    <div class="ai-result-header">
-                        <div class="card-header-content">
-                            <h4 class="ai-result-title">Data Validation</h4>
-                            <span class="importance-indicator high">HIGH</span>
-                        </div>
-                        <div class="card-controls">
-                            <span class="ai-badge">Rule Engine</span>
-                            <button class="expand-toggle" data-target="validation-details">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M6 9l6 6 6-6"/>
-                                </svg>
-                            </button>
-                        </div>
-                    </div>
-                    
-                    <!-- Always Visible Summary -->
-                    <div class="card-summary">
-                        {% if result.validation_issues|length > 0 %}
-                        <div class="validation-status failed">
-                            <span class="status-icon">⚠</span>
-                            <span class="status-text">{{ result.validation_issues|length }} validation issues found</span>
-                        </div>
-                        <div class="issue-preview">
-                            {% for issue in result.validation_issues[:2] %}
-                            <div class="issue-item">{{ issue }}</div>
-                            {% endfor %}
-                            {% if result.validation_issues|length > 2 %}
-                            <div class="issue-more">+{{ result.validation_issues|length - 2 }} more issues</div>
-                            {% endif %}
-                        </div>
-                        {% else %}
-                        <div class="validation-status passed">
-                            <span class="status-icon">✓</span>
-                            <span class="status-text">All validation checks passed</span>
-                        </div>
-                        {% endif %}
-                    </div>
-                    
-                    <!-- Expandable Details -->
-                    <div class="card-details collapsed" id="validation-details">
-                        {% if result.validation_issues|length > 0 %}
-                        <div class="detail-item">
-                            <div class="field-label">All Validation Issues</div>
-                            <div class="field-value">
-                                <ul class="issue-list">
-                                    {% for issue in result.validation_issues %}
-                                    <li class="issue-item-detailed">
-                                        <span class="issue-icon">!</span>
-                                        <span class="issue-text">{{ issue }}</span>
-                                    </li>
-                                    {% endfor %}
-                                </ul>
-                            </div>
-                        </div>
-                        {% endif %}
-                        
-                        {% if result.document_classification %}
-                        <div class="detail-item">
-                            <div class="field-label">Classification Confidence Requirements</div>
-                            <div class="field-value">
-                                <div class="confidence-threshold-info">
-                                    <div class="threshold-requirement">
-                                        <strong>Required:</strong> ≥70% (0.7) to pass validation
-                                    </div>
-                                    <div class="current-score {{ 'pass' if (result.document_classification.confidence or 0) >= 0.7 else 'fail' }}">
-                                        <strong>Current:</strong> {{ ((result.document_classification.confidence or 0) * 100)|round }}% 
-                                        ({{ "✓ Pass" if (result.document_classification.confidence or 0) >= 0.7 else "✗ Fail" }})
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="detail-item">
-                            <div class="field-label">Scoring System</div>
-                            <div class="field-value">
-                                <div class="scoring-method">
-                                    <strong>Hybrid AI System:</strong>
-                                    <ul class="scoring-details">
-                                        <li><strong>Primary:</strong> Mistral AI Vision Analysis (0.0-1.0)</li>
-                                        <li><strong>Fallback:</strong> Rule-based pattern matching (keywords 40% + patterns 40% + boost 20%)</li>
-                                        <li><strong>Quality Gate:</strong> AI result used if confidence ≥0.7, otherwise fallback to rules</li>
-                                    </ul>
-                                </div>
-                            </div>
-                        </div>
-                        {% endif %}
-                    </div>
-                </div>
-                {% endif %}
-
-                <!-- Fraud Detection -->
-                {% if result.fraud_findings is defined %}
-                <div class="ai-result-card">
-                    <div class="ai-result-header">
-                        <h4 class="ai-result-title">Fraud Detection</h4>
-                        <span class="ai-badge">Security Analysis</span>
-                    </div>
-                    
-                    {% if result.fraud_findings|length > 0 %}
-                    <div class="alert alert-warning">
-                        <strong>Findings Detected:</strong>
-                        <ul class="mt-2 mb-0">
-                            {% for finding in result.fraud_findings %}
-                            <li>{{ finding }}</li>
-                            {% endfor %}
-                        </ul>
-                    </div>
-                    {% else %}
-                    <div class="alert alert-success">
-                        <strong>No suspicious patterns detected</strong>
-                    </div>
-                    {% endif %}
-                </div>
-                {% endif %}
-                </div>
             </div>
 
-            <!-- Decision Summary -->
-            <div class="decision-summary {{ result.status }}">
-                <div class="decision-header">
-                    <h3>Processing Decision</h3>
-                    <div class="decision-status {{ result.status }}">
-                        {% if result.status == 'approved' %}✓ Approved
-                        {% elif result.status == 'rejected' %}✗ Rejected  
-                        {% elif result.status == 'review' %}⚠ Requires Review
-                        {% else %}{{ result.status|title }}
-                        {% endif %}
-                    </div>
-                </div>
-                
-                <div class="confidence-display">
-                    <div class="confidence-label">Decision Confidence</div>
-                    <div class="confidence-bar-container">
-                        <div class="confidence-fill confidence-{{ 'excellent' if (result.confidence or 0) >= 0.9 else 'good' if (result.confidence or 0) >= 0.7 else 'fair' if (result.confidence or 0) >= 0.5 else 'poor' }}" 
-                             style="width: {{ ((result.confidence or 0) * 100)|round }}%"></div>
-                    </div>
-                    <div class="confidence-text">{{ ((result.confidence or 0) * 100)|round }}%</div>
-                </div>
-                
-                {% if result.decision_reasons %}
-                <div class="decision-reasons">
-                    <h5>Decision Factors:</h5>
-                    {% for reason in result.decision_reasons %}
-                    <div class="reason-item">{{ reason }}</div>
-                    {% endfor %}
-                </div>
-                {% endif %}
-                
-                <div class="detail-item">
-                    <div class="field-label">Processing Time</div>
-                    <div class="field-value">{{ "%.2f"|format(result.processing_time_ms / 1000) }} seconds</div>
-                </div>
-            </div>
 
             <!-- Original OCR Text -->
             {% if result.ocr_text %}
