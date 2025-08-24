@@ -129,7 +129,6 @@ def validate_file(file):
 def index():
     """Main upload page"""
     return render_template('index.html', 
-                         languages=Config.LANGUAGE_MAPPINGS,
                          max_file_size=Config.MAX_FILE_SIZE)
 
 @app.route('/upload', methods=['POST'])
@@ -153,10 +152,8 @@ def upload_file():
         if not is_valid:
             return jsonify({'success': False, 'error': message}), 400
         
-        # Get form data
-        selected_languages = request.form.getlist('languages')
-        if not selected_languages:
-            selected_languages = ['en']  # Default to English
+        # Auto-detection mode - no manual language selection needed
+        selected_languages = []  # Empty array triggers auto-detection in OCR engine
             
         # Generate unique claim ID
         claim_id = str(uuid.uuid4())
@@ -180,7 +177,7 @@ def upload_file():
             'claim_status': 'processing',
             'created_at': datetime.utcnow().isoformat(),
             'metadata': {
-                'selected_languages': selected_languages,
+                'auto_detection_enabled': True,
                 'original_filename': filename,
                 'stored_filename': unique_filename
             }
@@ -206,7 +203,7 @@ def upload_file():
                     'error_message': error_msg,
                     'error_type': error_type,
                     'processing_time_ms': int((time.time() - start_time) * 1000),
-                    'selected_languages': selected_languages
+                    'auto_detection_enabled': True
                 }
             )
             
@@ -283,7 +280,7 @@ def upload_file():
         # Save OCR results
         db.insert_ocr_result({
             'claim_id': claim_id,
-            'language_code': ','.join(selected_languages),
+            'language_code': ocr_results.get('language', 'auto-detected'),
             'extracted_text': ocr_results.get('text', ''),
             'confidence_score': ocr_results.get('confidence', 0),
             'bounding_boxes': ocr_results.get('boxes', []),
@@ -344,8 +341,7 @@ def view_results(claim_id):
         
         return render_template('results.html', 
                              claim=claim_data, 
-                             ocr=ocr_data,
-                             languages=Config.LANGUAGE_MAPPINGS)
+                             ocr=ocr_data)
         
     except Exception as e:
         flash('Error retrieving results', 'error')
@@ -422,8 +418,7 @@ def view_enhanced_results(claim_id):
         print(f"   Result quality_assessment: {bool(result['quality_assessment'])}")
         
         return render_template('enhanced_results.html', 
-                             result=result,
-                             languages=Config.LANGUAGE_MAPPINGS)
+                             result=result)
         
     except Exception as e:
         flash('Error retrieving enhanced results', 'error')

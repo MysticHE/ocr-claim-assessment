@@ -90,32 +90,33 @@ class MistralOnlyOCREngine:
             raise ValueError(f"Error encoding PDF: {str(e)}")
     
     def create_ocr_prompt(self, languages: List[str], include_structure: bool = True) -> str:
-        """Create OCR prompt for Mistral"""
-        language_list = ", ".join(languages) if len(languages) > 1 else languages[0] if languages else "English"
+        """Create OCR prompt for Mistral with English output requirement"""
         
-        base_prompt = f"""
-Extract all text from this image accurately. The text may be in {language_list}.
+        base_prompt = """
+Extract all text from this image accurately and provide the output in English.
 
 Instructions:
 1. Extract ALL visible text, including headers, body text, numbers, labels, and any other textual content
-2. Maintain the original text structure and formatting as much as possible
-3. If text appears to be in multiple languages, identify and extract all of them
-4. Include any numbers, dates, amounts, codes, or identifiers you see
+2. If the original text is in a non-English language, translate it to English while preserving meaning
+3. Maintain the original document structure and formatting as much as possible
+4. Include any numbers, dates, amounts, codes, or identifiers you see (keep these in their original format)
 5. For forms or structured documents, preserve the relationship between labels and values
 6. If text is unclear or partially obscured, make your best attempt and indicate uncertainty with [unclear] or [partially visible]
+7. IMPORTANT: Always provide the final output in English, regardless of the source language
 """
         
         if include_structure:
             base_prompt += """
-7. If the document appears to be a medical claim, invoice, or official document, pay special attention to:
+8. If the document appears to be a medical claim, invoice, or official document, pay special attention to:
    - Patient/claimant names and IDs
-   - Diagnosis codes and descriptions
+   - Diagnosis codes and descriptions (translate descriptions to English)
    - Treatment dates and details
    - Monetary amounts and currencies
    - Doctor/provider information
    - Policy or reference numbers
 
-Format your response as clean, readable text. If there are multiple sections, separate them clearly.
+Format your response as clean, readable English text. If there are multiple sections, separate them clearly.
+Translate any non-English content to English while preserving the document structure.
 """
         
         return base_prompt.strip()
@@ -376,14 +377,15 @@ Format your response as clean, readable text. If there are multiple sections, se
                 }
             
             if not languages:
-                languages = ['en']  # Default to English
+                languages = []  # Auto-detection mode with English output
             
             # Process with Mistral
             result = self.extract_text_with_mistral(image_path, languages)
             
             # Add metadata
-            result['total_languages_attempted'] = len(languages)
-            result['requested_languages'] = languages
+            result['auto_detection_mode'] = len(languages) == 0
+            result['output_language'] = 'en'  # Always English output
+            result['total_languages_attempted'] = len(languages) if languages else 'auto'
             
             return result
             

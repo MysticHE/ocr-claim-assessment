@@ -3,7 +3,7 @@
 ## Project Overview
 🎉 **PHASE 1 MVP COMPLETE & STREAMLINED** - Advanced AI-powered document processing system for insurance claims implementing **95% of PDF workflow requirements**. Features comprehensive AI pipeline with document classification, quality assessment, fraud detection, and intelligent decision making.
 
-**Version 2.0**: Now using **Mistral-only OCR engine** for maximum performance and reliability.
+**Version 2.1**: Now featuring **Automatic Language Detection** with guaranteed English output - no manual language selection required!
 
 ### Phase 1 Implementation Status: ✅ COMPLETED
 
@@ -25,6 +25,12 @@
 
 ## Key Features Implemented
 
+### 🌐 Automatic Language Detection & Translation
+- **Universal Language Support**: Detects and processes 80+ languages automatically
+- **Guaranteed English Output**: All results translated to English regardless of input language
+- **No Manual Selection**: Streamlined user experience without language selection interface
+- **Smart Translation**: Preserves document structure while translating content to English
+
 ### 🤖 AI-Powered Document Classification
 - **9 Document Types**: Receipt, Invoice, Referral Letter, Memo, Diagnostic Report, Prescription, Medical Certificate, Insurance Form, Identity Document
 - **Hybrid Approach**: Mistral AI vision model + rule-based classification
@@ -39,9 +45,9 @@
 
 ### 📊 Enhanced Data Extraction
 - **Structured Extraction**: Patient info, amounts, dates, diagnosis codes, provider details
-- **Multi-language Support**: 80+ languages with automatic detection  
+- **Auto-Translation**: Extracts data in any language and translates to English
 - **Currency Handling**: SGD, USD, MYR with automatic conversion
-- **ICD-10 Support**: Medical diagnosis code extraction and validation
+- **ICD-10 Support**: Medical diagnosis code extraction and validation with English descriptions
 
 ### 🛡️ Fraud Detection System
 - **Pattern Analysis**: Suspicious text pattern detection
@@ -56,10 +62,11 @@
 - **Multi-factor Scoring**: OCR + classification + quality + completeness
 
 ### 📈 Comprehensive Workflow Tracking
-- **10-Step Pipeline**: Document upload → Quality → Classification → OCR → Extraction → Validation → Fraud → Policy → Decision → Results
+- **8-Step Pipeline**: Document upload → Quality → Classification → Auto-OCR → Extraction → Validation → Fraud → Policy → Decision → Results
 - **Real-time Progress**: Step-by-step tracking with timing and confidence
 - **AI Engine Attribution**: Track which AI engines processed each step
 - **Decision Transparency**: Full reasoning and evidence trails
+- **User Education**: Interactive workflow visualization showing exactly how the AI processes claims
 
 ## Dependencies & Architecture
 
@@ -101,31 +108,31 @@
 
 ## How the OCR System Works
 
-### Streamlined Mistral-Only Engine
+### Streamlined Auto-Detection Engine
 
-The system now uses a **streamlined single-tier approach** optimized for production reliability:
+The system now uses a **fully automated language detection approach** with guaranteed English output:
 
 #### Mistral AI (Primary & Only Engine)
 - **API-based processing** - No local memory usage, no model downloads
-- **High accuracy** - Advanced Pixtral vision-language model  
+- **High accuracy** - Advanced Pixtral vision-language model with built-in translation
 - **Instant startup** - Initializes immediately at app launch
-- **Multi-language support** - Built-in language detection for 80+ languages
-- **Comprehensive error handling** - Detailed error types and user-friendly messages
+- **Universal language support** - Automatically detects and translates 80+ languages to English
+- **Guaranteed English output** - All results provided in English regardless of input language
+- **Smart translation** - Preserves document structure while translating content
 - **Production ready** - No local dependencies or heavy libraries
 
 ### Processing Flow
 
 ```mermaid
 flowchart TD
-    A[Document Upload] --> B[MistralOnlyOCREngine.process_image]
+    A[Document Upload] --> B[Auto-Detection Engine]
     B --> C{Mistral AI Available?}
-    C -->|Yes| D[Process with Mistral AI]
-    D --> E{Success?}
-    E -->|Yes| F[Return Results + Enhanced Analysis]
-    E -->|No| G[Return Detailed Error]
-    C -->|No| H[Return Service Error]
+    C -->|Yes| D[Detect Language & Extract Text]
+    D --> E[Translate to English]
+    E --> F[Return Structured English Results]
+    C -->|No| G[Return Service Error]
+    F --> H[Enhanced AI Analysis Pipeline]
     G --> I[User-Friendly Error Message]
-    H --> I
 ```
 
 ### Memory Management Strategy
@@ -133,36 +140,48 @@ flowchart TD
 #### Startup (Ultra-Minimal Memory Usage)
 ```python
 # Only Mistral AI client initializes - pure API client
-mistral_engine = MistralOnlyOCREngine()  # ~2MB memory
-# No heavy dependencies - no OpenCV, no EasyOCR, no model downloads
+auto_detection_engine = MistralOnlyOCREngine()  # ~2MB memory
+# No heavy dependencies - no language selection UI needed
 ```
 
-#### Runtime (API-Only Processing)
+#### Runtime (Auto-Detection Processing)
 ```python
-# All processing happens via API calls
-result = mistral_engine.process_image(image_path, languages)
-# No local models loaded, no memory spikes
+# All processing happens via API calls with auto-detection
+result = auto_detection_engine.process_image(image_path, [])  # Empty array = auto-detect
+# Automatically detects language and translates to English
 ```
 
 ### Language Support
-- **80+ Languages** supported via Mistral AI
-- **Automatic language detection** with high accuracy
-- **Multi-language documents** handled intelligently
-- **Real-time processing** for all supported languages
+- **80+ Languages** automatically detected and processed by Mistral AI
+- **Guaranteed English output** - all results translated to English
+- **Multi-language documents** handled intelligently with unified English output
+- **Real-time processing** with automatic translation for all supported languages
+- **No user selection required** - completely automated language detection
 
 ### Performance Characteristics
 
-| Metric | Mistral-Only Engine |
-|--------|---------------------|
+| Metric | Auto-Detection Engine |
+|--------|----------------------|
 | Startup Time | <100ms |
 | Memory Usage | ~2MB |
 | Processing Speed | ~2-5s |
-| Accuracy | Excellent |
+| Language Detection | Automatic |
+| Translation Speed | Real-time |
+| Output Language | Always English |
 | Offline Support | No (API-based) |
 | Dependencies | Minimal |
 | Error Handling | Comprehensive |
 
 ## Recent Issues Resolved
+
+### Version 2.1.0 - Automatic Language Detection & Translation
+- **Removed language selection UI**: Eliminated manual language selection interface completely
+- **Auto-detection mode**: System automatically detects any language without user input
+- **Guaranteed English output**: All results translated to English regardless of input language
+- **Streamlined UX**: Simplified upload process with auto-detection notice
+- **Educational workflow**: Added 8-step process visualization explaining AI workflow
+- **Updated CSS architecture**: Separated styling for auto-detection and workflow components
+- **Backend optimization**: Removed language selection logic and validation
 
 ### Version 2.0.0 - Streamlined Production Engine
 - **Removed EasyOCR dependency**: Eliminated ~100MB memory overhead and complex fallback logic

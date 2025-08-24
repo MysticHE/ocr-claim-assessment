@@ -22,7 +22,7 @@
                 </a>
                 <nav>
                     <ul class="nav-links">
-                        <li><a href="#features">Features</a></li>
+                        <li><a href="#workflow">How It Works</a></li>
                         <li><a href="#about">About</a></li>
                     </ul>
                 </nav>
@@ -35,8 +35,8 @@
             <div class="page-title">
                 <h1>Multi-Language OCR Claim Processing</h1>
                 <p class="page-subtitle">
-                    Upload your claim documents for automated text extraction and processing. 
-                    Supports English, Chinese, Malay, Tamil, Korean, and many other languages.
+                    Upload your claim documents for automated AI-powered processing. 
+                    Our system automatically detects any language and provides results in English.
                 </p>
             </div>
 
@@ -106,23 +106,16 @@
                             </div>
                         </div>
 
-                        <!-- Language Selection -->
-                        <div class="language-selector">
-                            <div class="language-selector-title">
-                                Select Languages for OCR Processing
+                        <!-- Auto-Detection Notice -->
+                        <div class="auto-detection-notice">
+                            <div class="detection-icon">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                                </svg>
                             </div>
-                            <div class="language-grid">
-                                {% for code, name in languages.items() %}
-                                <label class="language-btn" for="lang_{{ code }}">
-                                    <input type="checkbox" 
-                                           id="lang_{{ code }}" 
-                                           name="languages" 
-                                           value="{{ code }}"
-                                           {% if code == 'en' %}checked{% endif %}>
-                                    <span class="checkmark">✓</span>
-                                    {{ name }}
-                                </label>
-                                {% endfor %}
+                            <div class="detection-text">
+                                <div class="detection-title">Automatic Language Detection</div>
+                                <div class="detection-subtitle">Our AI automatically detects document language and provides results in English</div>
                             </div>
                         </div>
 
@@ -162,25 +155,65 @@
                 <div class="error-text" id="errorText"></div>
             </div>
 
-            <!-- Features Section -->
-            <div id="features" class="mt-8">
-                <h2 class="text-center mb-6">Key Features</h2>
-                <div class="claim-details">
-                    <div class="detail-item">
-                        <div class="detail-label">Multi-Language Support</div>
-                        <div class="detail-value">80+ Languages Including English, Chinese, Malay, Tamil, Korean</div>
+            <!-- Workflow Process -->
+            <div id="workflow" class="workflow-section mt-8">
+                <h2 class="workflow-title">How Our AI Claims Processing Works</h2>
+                <div class="workflow-steps">
+                    <div class="workflow-step">
+                        <div class="step-number">1</div>
+                        <div class="step-content">
+                            <div class="step-title">Document Upload & Validation</div>
+                            <div class="step-description">Upload your claim document. Our system validates file format, size, and quality.</div>
+                        </div>
                     </div>
-                    <div class="detail-item">
-                        <div class="detail-label">AI-Powered Processing</div>
-                        <div class="detail-value">Advanced OCR with Mistral AI (Primary) and EasyOCR Fallback</div>
+                    <div class="workflow-step">
+                        <div class="step-number">2</div>
+                        <div class="step-content">
+                            <div class="step-title">Quality Assessment</div>
+                            <div class="step-description">AI analyzes document quality, resolution, clarity, and readability for optimal processing.</div>
+                        </div>
                     </div>
-                    <div class="detail-item">
-                        <div class="detail-label">Automated Decisions</div>
-                        <div class="detail-value">Smart Claim Assessment with Business Rule Engine</div>
+                    <div class="workflow-step">
+                        <div class="step-number">3</div>
+                        <div class="step-content">
+                            <div class="step-title">Document Classification</div>
+                            <div class="step-description">Smart classification identifies document type: receipts, invoices, medical reports, referral letters, etc.</div>
+                        </div>
                     </div>
-                    <div class="detail-item">
-                        <div class="detail-label">Secure Processing</div>
-                        <div class="detail-value">Enterprise-Grade Security and Data Protection</div>
+                    <div class="workflow-step">
+                        <div class="step-number">4</div>
+                        <div class="step-content">
+                            <div class="step-title">OCR & Language Detection</div>
+                            <div class="step-description">Advanced Mistral AI extracts text from any language and converts output to English automatically.</div>
+                        </div>
+                    </div>
+                    <div class="workflow-step">
+                        <div class="step-number">5</div>
+                        <div class="step-content">
+                            <div class="step-title">Data Extraction & Validation</div>
+                            <div class="step-description">Extract key information: patient details, amounts, dates, diagnosis codes, and validate data integrity.</div>
+                        </div>
+                    </div>
+                    <div class="workflow-step">
+                        <div class="step-number">6</div>
+                        <div class="step-content">
+                            <div class="step-title">Fraud Detection</div>
+                            <div class="step-description">Multi-layer fraud analysis detects suspicious patterns, duplicates, and potential document tampering.</div>
+                        </div>
+                    </div>
+                    <div class="workflow-step">
+                        <div class="step-number">7</div>
+                        <div class="step-content">
+                            <div class="step-title">Policy Rule Engine</div>
+                            <div class="step-description">Apply business rules and policy constraints to determine claim eligibility and coverage limits.</div>
+                        </div>
+                    </div>
+                    <div class="workflow-step">
+                        <div class="step-number">8</div>
+                        <div class="step-content">
+                            <div class="step-title">Decision & Results</div>
+                            <div class="step-description">Generate final decision (Approved/Review/Rejected) with confidence score and detailed analysis report.</div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -284,22 +317,7 @@
             return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
         }
 
-        // Language selection handling
-        document.querySelectorAll('input[name="languages"]').forEach(checkbox => {
-            checkbox.addEventListener('change', function() {
-                const label = this.closest('.language-btn');
-                if (this.checked) {
-                    label.classList.add('active');
-                } else {
-                    label.classList.remove('active');
-                }
-            });
-
-            // Initialize active state
-            if (checkbox.checked) {
-                checkbox.closest('.language-btn').classList.add('active');
-            }
-        });
+        // Auto-detection is enabled by default - no language selection needed
 
         // Form submission
         uploadForm.addEventListener('submit', function(e) {
@@ -310,12 +328,7 @@
                 return;
             }
 
-            // Check if at least one language is selected
-            const selectedLanguages = document.querySelectorAll('input[name="languages"]:checked');
-            if (selectedLanguages.length === 0) {
-                showError('Please select at least one language for OCR processing.');
-                return;
-            }
+            // Auto-detection mode - no language validation needed
 
             // Show processing status
             showProcessing();
@@ -366,9 +379,9 @@
                 if (progress < 30) {
                     document.getElementById('progressText').textContent = 'Uploading document...';
                 } else if (progress < 60) {
-                    document.getElementById('progressText').textContent = 'Processing with Mistral AI OCR...';
+                    document.getElementById('progressText').textContent = 'Auto-detecting language and extracting text...';
                 } else {
-                    document.getElementById('progressText').textContent = 'Analyzing claim data...';
+                    document.getElementById('progressText').textContent = 'Analyzing claim data and generating report...';
                 }
             }, 500);
         }
