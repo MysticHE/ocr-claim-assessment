@@ -78,6 +78,40 @@ class MistralOnlyOCREngine:
         except Exception as e:
             raise ValueError(f"Error encoding image: {str(e)}")
     
+    def _encode_image_to_base64_for_ocr(self, image_path: str) -> str:
+        """Encode image to base64 string for Mistral OCR API without quality degradation"""
+        try:
+            with Image.open(image_path) as img:
+                # Preserve original format and quality for better OCR results
+                original_format = img.format or 'PNG'
+                
+                # Convert to RGB if necessary for JPEG, otherwise preserve mode
+                if original_format.upper() == 'JPEG' and img.mode not in ('RGB', 'L'):
+                    img = img.convert('RGB')
+                elif original_format.upper() == 'PNG' and img.mode not in ('RGB', 'RGBA', 'L', 'LA'):
+                    img = img.convert('RGBA')
+                
+                # Keep original size for better OCR quality - no resizing
+                # The OCR API can handle larger images better than Vision API
+                
+                # Convert to base64 with high quality
+                buffer = io.BytesIO()
+                
+                if original_format.upper() == 'JPEG':
+                    img.save(buffer, format='JPEG', quality=95, optimize=False)
+                    mime_type = 'image/jpeg'
+                else:
+                    # Use PNG for other formats to preserve quality
+                    img.save(buffer, format='PNG', optimize=False)
+                    mime_type = 'image/png'
+                
+                buffer.seek(0)
+                image_data = base64.b64encode(buffer.getvalue()).decode('utf-8')
+                return f"data:{mime_type};base64,{image_data}"
+                
+        except Exception as e:
+            raise ValueError(f"Error encoding image for OCR: {str(e)}")
+    
     def _encode_pdf_to_base64(self, pdf_path: str) -> str:
         """Encode PDF file to base64 string for Mistral OCR API"""
         try:
@@ -122,18 +156,63 @@ Translate any non-English content to English while preserving the document struc
         return base_prompt.strip()
     
     def extract_text_with_mistral(self, file_path: str, languages: List[str]) -> Dict[str, Any]:
-        """Extract text using appropriate Mistral AI API (Vision for images, OCR for PDFs)"""
+        """Extract text using Mistral OCR API for both images and PDFs"""
         try:
             start_time = time.time()
             
-            # Determine file type and use appropriate API
+            # Use OCR API for all file types (both images and PDFs)
+            return self._extract_with_ocr_api(file_path, languages, start_time)
+                
+        except Exception as e:
+            return self._handle_extraction_error(e, languages, start_time)
+    
+    def _extract_with_ocr_api(self, file_path: str, languages: List[str], start_time: float) -> Dict[str, Any]:
+        """Extract text from both images and PDFs using unified Mistral OCR API"""
+        try:
+            # Determine file type and encode appropriately
             file_extension = file_path.lower().split('.')[-1]
             
             if file_extension == 'pdf':
-                return self._extract_from_pdf_with_ocr_api(file_path, languages, start_time)
+                # Encode PDF to base64
+                document_base64 = self._encode_pdf_to_base64(file_path)
             else:
-                return self._extract_from_image_with_vision_api(file_path, languages, start_time)
-                
+                # Encode image to base64 without quality degradation
+                document_base64 = self._encode_image_to_base64_for_ocr(file_path)
+            
+            # Make API call to Mistral OCR endpoint for both file types
+            response = self.client.ocr.process(
+                model="mistral-ocr-latest",
+                document={
+                    "type": "document_url",
+                    "document_url": document_base64
+                },
+                include_image_base64=True
+            )
+            
+            # Extract text from OCR response
+            extracted_text = ""
+            if response.pages:
+                # Combine text from all pages
+                extracted_text = "\n\n".join([
+                    page.markdown for page in response.pages if hasattr(page, 'markdown') and page.markdown
+                ])
+            
+            processing_time = (time.time() - start_time) * 1000
+            
+            # Calculate confidence and detect language
+            confidence = self._calculate_confidence(extracted_text)
+            detected_language = self._detect_language(extracted_text)
+            
+            return {
+                'success': True,
+                'text': extracted_text,
+                'confidence': confidence,
+                'language': detected_language,
+                'processing_time_ms': int(processing_time),
+                'engine': 'mistral_ocr',
+                'word_count': len(extracted_text.split()) if extracted_text else 0
+            }
+            
         except Exception as e:
             return self._handle_extraction_error(e, languages, start_time)
     
@@ -216,49 +295,6 @@ Translate any non-English content to English while preserving the document struc
                 'engine': 'mistral',
                 'error_type': error_type
             }
-    
-    def _extract_from_pdf_with_ocr_api(self, pdf_path: str, languages: List[str], start_time: float) -> Dict[str, Any]:
-        """Extract text from PDF using Mistral OCR API (Document AI)"""
-        try:
-            # Encode PDF to base64 for API call
-            pdf_base64 = self._encode_pdf_to_base64(pdf_path)
-            
-            # Make API call to Mistral OCR endpoint (not chat completions)
-            response = self.client.ocr.process(
-                model="mistral-ocr-latest",
-                document={
-                    "type": "document_url",
-                    "document_url": pdf_base64
-                },
-                include_image_base64=True
-            )
-            
-            # Extract text from OCR response
-            extracted_text = ""
-            if response.pages:
-                # Combine text from all pages
-                extracted_text = "\n\n".join([
-                    page.markdown for page in response.pages if hasattr(page, 'markdown') and page.markdown
-                ])
-            
-            processing_time = (time.time() - start_time) * 1000
-            
-            # Calculate confidence and detect language
-            confidence = self._calculate_confidence(extracted_text)
-            detected_language = self._detect_language(extracted_text)
-            
-            return {
-                'success': True,
-                'text': extracted_text,
-                'confidence': confidence,
-                'language': detected_language,
-                'processing_time_ms': int(processing_time),
-                'engine': 'mistral_ocr',
-                'word_count': len(extracted_text.split()) if extracted_text else 0
-            }
-            
-        except Exception as e:
-            return self._handle_extraction_error(e, languages, start_time)
     
     def _handle_extraction_error(self, e: Exception, languages: List[str], start_time: float) -> Dict[str, Any]:
         """Handle extraction errors with categorization"""

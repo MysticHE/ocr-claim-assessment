@@ -14,7 +14,8 @@
       "Bash(python:*)",
       "Bash(pip install:*)",
       "Bash(find:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(del test_ocr_fix.py)"
     ],
     "deny": [],
     "ask": [],
