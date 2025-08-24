@@ -21,6 +21,51 @@
   --transition: all 0.2s ease-in-out;
 }
 
+/* Confidence Threshold Styling */
+.confidence-threshold-info {
+  background: var(--background-color);
+  padding: 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+}
+
+.threshold-requirement {
+  color: var(--text-secondary);
+  font-size: 14px;
+  margin-bottom: 8px;
+}
+
+.current-score {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.current-score.pass {
+  color: var(--success-color);
+}
+
+.current-score.fail {
+  color: var(--error-color);
+}
+
+.scoring-method {
+  background: var(--background-color);
+  padding: 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+}
+
+.scoring-details {
+  margin: 8px 0 0 0;
+  padding-left: 16px;
+}
+
+.scoring-details li {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+}
+
 /* Reset and Base Styles */
 * {
   margin: 0;

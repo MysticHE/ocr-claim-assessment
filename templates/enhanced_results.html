@@ -176,6 +176,64 @@
                 </div>
                 {% endif %}
 
+                <!-- Data Validation -->
+                {% if result.validation_issues is defined %}
+                <div class="ai-result-card">
+                    <div class="ai-result-header">
+                        <h4 class="ai-result-title">Data Validation</h4>
+                        <span class="ai-badge">Rule Engine</span>
+                    </div>
+                    
+                    <!-- Validation Summary -->
+                    {% if result.validation_issues|length > 0 %}
+                    <div class="alert alert-warning">
+                        <strong>Validation failed - {{ result.validation_issues|length }} issues</strong>
+                        <ul class="mt-2 mb-0">
+                            {% for issue in result.validation_issues %}
+                            <li>{{ issue }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-success">
+                        <strong>All validation checks passed</strong>
+                    </div>
+                    {% endif %}
+                    
+                    <!-- Classification Confidence Details -->
+                    {% if result.document_classification %}
+                    <div class="detail-item mt-3">
+                        <div class="field-label">Classification Confidence Threshold</div>
+                        <div class="field-value">
+                            <div class="confidence-threshold-info">
+                                <div class="threshold-requirement">
+                                    <strong>Required:</strong> ≥70% (0.7) to pass validation
+                                </div>
+                                <div class="current-score {{ 'pass' if result.document_classification.confidence >= 0.7 else 'fail' }}">
+                                    <strong>Current:</strong> {{ (result.document_classification.confidence * 100)|round }}% 
+                                    ({{ "✓ Pass" if result.document_classification.confidence >= 0.7 else "✗ Fail" }})
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="detail-item">
+                        <div class="field-label">Confidence Scoring Method</div>
+                        <div class="field-value">
+                            <div class="scoring-method">
+                                <strong>Hybrid AI System:</strong>
+                                <ul class="scoring-details">
+                                    <li><strong>Primary:</strong> Mistral AI Vision Analysis (0.0-1.0)</li>
+                                    <li><strong>Fallback:</strong> Rule-based pattern matching (keywords 40% + patterns 40% + boost 20%)</li>
+                                    <li><strong>Quality Gate:</strong> AI result used if confidence ≥0.7, otherwise fallback to rules</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+                {% endif %}
+
                 <!-- Fraud Detection -->
                 {% if result.fraud_findings is defined %}
                 <div class="ai-result-card">
