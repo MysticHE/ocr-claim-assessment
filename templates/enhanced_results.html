@@ -53,11 +53,10 @@
                 <div class="workflow-summary-enhanced">
                     <!-- Single Row: All 5 Steps -->
                     <div class="workflow-row">
-                        <!-- Step 1: Document Classification -->
+                        <!-- Document Classification -->
                         {% if result.document_classification %}
-                        <div class="workflow-step-enhanced step-1 {{ 'completed' if result.document_classification else 'pending' }}">
+                        <div class="workflow-step-enhanced document-classification {{ 'completed' if result.document_classification else 'pending' }}">
                             <div class="step-header">
-                                <div class="step-number">1</div>
                                 <div class="step-title">Document Classification</div>
                             </div>
                             <div class="step-body">
@@ -82,10 +81,9 @@
                         </div>
                         {% endif %}
 
-                        <!-- Step 2: Claim Details Extraction -->
-                        <div class="workflow-step-enhanced step-2 {{ 'completed' if result.extracted_data else 'pending' }}">
+                        <!-- Claim Details Extraction -->
+                        <div class="workflow-step-enhanced claim-extraction {{ 'completed' if result.extracted_data else 'pending' }}">
                             <div class="step-header">
-                                <div class="step-number">2</div>
                                 <div class="step-title">Claim Details Extraction</div>
                             </div>
                             <div class="step-body">
@@ -107,26 +105,36 @@
                             </div>
                         </div>
 
-                        <!-- Step 3: Structure Extraction -->
-                        <div class="workflow-step-enhanced step-3 {{ 'completed' if result.extracted_data else 'pending' }}">
+                        <!-- Document Readability Assessment -->
+                        <div class="workflow-step-enhanced readability-assessment {{ 'completed' if result.quality_assessment else 'pending' }}">
                             <div class="step-header">
-                                <div class="step-number">3</div>
-                                <div class="step-title">Structure Extraction</div>
+                                <div class="step-title">Document Readability</div>
                             </div>
                             <div class="step-body">
-                                {% if result.extracted_data %}
-                                <div class="step-value">✅ Data Structured</div>
-                                <div class="structure-info">{{ result.extracted_data.keys()|length }} fields extracted</div>
+                                {% if result.quality_assessment %}
+                                    {% if result.quality_assessment.quality_score.overall_score >= 0.8 %}
+                                        <div class="step-value">📄 Excellent Clarity</div>
+                                        <div class="readability-info">Very clear and readable</div>
+                                    {% elif result.quality_assessment.quality_score.overall_score >= 0.6 %}
+                                        <div class="step-value">📖 Good Clarity</div>
+                                        <div class="readability-info">Clear with minor issues</div>
+                                    {% elif result.quality_assessment.quality_score.overall_score >= 0.4 %}
+                                        <div class="step-value">📝 Moderate Clarity</div>
+                                        <div class="readability-info">Readable but blurred</div>
+                                    {% else %}
+                                        <div class="step-value">📋 Poor Clarity</div>
+                                        <div class="readability-info">Difficult to read</div>
+                                    {% endif %}
                                 {% else %}
-                                <div class="step-value">❌ Structure extraction failed</div>
+                                    <div class="step-value">📄 Standard Quality</div>
+                                    <div class="readability-info">No quality issues detected</div>
                                 {% endif %}
                             </div>
                         </div>
 
-                        <!-- Step 4: Fraud Detection -->
-                        <div class="workflow-step-enhanced step-4 {{ 'completed' if result.fraud_findings is defined else 'pending' }}">
+                        <!-- Fraud Detection -->
+                        <div class="workflow-step-enhanced fraud-detection {{ 'completed' if result.fraud_findings is defined else 'pending' }}">
                             <div class="step-header">
-                                <div class="step-number">4</div>
                                 <div class="step-title">Fraud Detection</div>
                             </div>
                             <div class="step-body">
@@ -149,11 +157,10 @@
                             </div>
                         </div>
 
-                        <!-- Step 5: Final Decision -->
-                        <div class="workflow-step-enhanced step-5 decision-card {{ result.status }}">
+                        <!-- Final Decision -->
+                        <div class="workflow-step-enhanced final-decision decision-card {{ result.status }}">
                             <div class="step-header">
-                                <div class="step-number">5</div>
-                                <div class="step-title">Final Decision</div>
+                                <div class="step-title">Decision</div>
                             </div>
                             <div class="step-body">
                                 <div class="step-value decision-value {{ result.status }}">
