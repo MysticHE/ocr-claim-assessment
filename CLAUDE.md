@@ -90,9 +90,9 @@
             ┌───────────────────────┼───────────────────────┐
             │                       │                       │
     ┌───────▼────────┐    ┌─────────▼─────────┐    ┌───────▼────────┐
-    │ DocumentClassifier  │  QualityAssessor  │    │ HybridOCREngine│
-    │  9 Doc Types   │    │  CV Analysis     │    │ Mistral+EasyOCR│
-    │  AI+Rules      │    │  Quality Gates   │    │ Lazy Loading   │
+    │ DocumentClassifier  │  QualityAssessor  │    │ Mistral OCR API│
+    │  9 Doc Types   │    │  CV Analysis     │    │ Unified Engine │
+    │  AI+Rules      │    │  Quality Gates   │    │ PDF + Images   │
     └────────────────┘    └───────────────────┘    └────────────────┘
                                     │
                           ┌─────────▼─────────┐
@@ -108,47 +108,71 @@
 
 ## How the OCR System Works
 
-### Streamlined Auto-Detection Engine
+### Unified Mistral OCR API Engine
 
-The system now uses a **fully automated language detection approach** with guaranteed English output:
+The system uses **Mistral OCR API** for both PDFs and images with guaranteed English output:
 
-#### Mistral AI (Primary & Only Engine)
+#### Mistral OCR API (Single Unified Engine)
+- **Universal document processing** - Handles PDFs and images through single OCR API
+- **Model**: `mistral-ocr-latest` - Latest OCR model from Mistral AI
 - **API-based processing** - No local memory usage, no model downloads
-- **High accuracy** - Advanced Pixtral vision-language model with built-in translation
-- **Instant startup** - Initializes immediately at app launch
+- **Instant startup** - Initializes immediately at app launch  
 - **Universal language support** - Automatically detects and translates 80+ languages to English
 - **Guaranteed English output** - All results provided in English regardless of input language
 - **Smart translation** - Preserves document structure while translating content
 - **Production ready** - No local dependencies or heavy libraries
+- **Consistent results** - Same OCR quality for PDFs and images
 
 ### Processing Flow
 
 ```mermaid
 flowchart TD
-    A[Document Upload] --> B[Auto-Detection Engine]
-    B --> C{Mistral AI Available?}
-    C -->|Yes| D[Detect Language & Extract Text]
-    D --> E[Translate to English]
-    E --> F[Return Structured English Results]
-    C -->|No| G[Return Service Error]
-    F --> H[Enhanced AI Analysis Pipeline]
-    G --> I[User-Friendly Error Message]
+    A[Document Upload] --> B{File Type?}
+    B -->|PDF| C[PDF → base64 + application/pdf MIME]
+    B -->|Image| D[Image → base64 + image/png|jpeg MIME]
+    C --> E[Mistral OCR API: document_url structure]
+    D --> F[Mistral OCR API: image_url structure] 
+    E --> G[mistral-ocr-latest Model Processing]
+    F --> G
+    G --> H[Extract Text from Response.pages.markdown]
+    H --> I[Auto-translate to English + Structure Preservation]
+    I --> J[JSON Serialization + Database Storage]
+    J --> K[Enhanced AI Analysis Pipeline]
 ```
 
-### Memory Management Strategy
+### API Implementation Details
 
-#### Startup (Ultra-Minimal Memory Usage)
+#### Document Structure Configuration (Key Technical Fix)
 ```python
-# Only Mistral AI client initializes - pure API client
-auto_detection_engine = MistralOnlyOCREngine()  # ~2MB memory
-# No heavy dependencies - no language selection UI needed
+# For PDF files
+if file_extension == 'pdf':
+    document_config = {
+        "type": "document_url",
+        "document_url": f"data:application/pdf;base64,{base64_data}"
+    }
+
+# For image files  
+else:
+    document_config = {
+        "type": "image_url", 
+        "image_url": f"data:image/png;base64,{base64_data}"
+    }
+
+# Unified API call
+response = client.ocr.process(
+    model="mistral-ocr-latest",
+    document=document_config,
+    include_image_base64=True
+)
 ```
 
-#### Runtime (Auto-Detection Processing)
+#### JSON Serialization Handling
 ```python
-# All processing happens via API calls with auto-detection
-result = auto_detection_engine.process_image(image_path, [])  # Empty array = auto-detect
-# Automatically detects language and translates to English
+def make_json_serializable(obj):
+    """Convert numpy types to native Python types for JSON serialization"""
+    if isinstance(obj, np.bool_):
+        return bool(obj)  # Prevents "Object of type bool_ is not JSON serializable" 
+    # ... handle other numpy types
 ```
 
 ### Language Support
@@ -160,19 +184,51 @@ result = auto_detection_engine.process_image(image_path, [])  # Empty array = au
 
 ### Performance Characteristics
 
-| Metric | Auto-Detection Engine |
-|--------|----------------------|
+| Metric | Mistral OCR API |
+|--------|-----------------|
 | Startup Time | <100ms |
 | Memory Usage | ~2MB |
 | Processing Speed | ~2-5s |
+| File Types | PDF + Images (PNG, JPEG) |
 | Language Detection | Automatic |
 | Translation Speed | Real-time |
 | Output Language | Always English |
 | Offline Support | No (API-based) |
 | Dependencies | Minimal |
 | Error Handling | Comprehensive |
+| Text Extraction | Up to 42K+ characters |
 
 ## Recent Issues Resolved
+
+### Version 2.2.0 - FINAL WORKING SOLUTION: Unified Mistral OCR API
+**Status: ✅ FULLY RESOLVED - Both PDFs and images now working correctly**
+
+#### Root Cause Analysis:
+- **OCR Extraction**: Was working perfectly (42K+ characters extracted successfully)
+- **API Structure**: Required different document configurations for PDFs vs images
+- **Database Storage**: JSON serialization errors with numpy boolean types prevented results display
+
+#### Technical Fixes Applied:
+1. **Correct API Document Structure**:
+   - **PDFs**: `{"type": "document_url", "document_url": "data:application/pdf;base64,..."}` 
+   - **Images**: `{"type": "image_url", "image_url": "data:image/png;base64,..."}`
+   - **Model**: `mistral-ocr-latest` for both file types
+
+2. **JSON Serialization Fix**:
+   - Added `make_json_serializable()` helper function
+   - Converts numpy.bool_ to Python bool before database storage
+   - Prevents "Object of type bool_ is not JSON serializable" error
+
+3. **Unified Processing**:
+   - Single OCR API endpoint for all document types
+   - Consistent text extraction from `response.pages.markdown`
+   - Same quality results for PDFs and images
+
+#### Result:
+- ✅ **PDFs**: Extract OCR text and display in "Original OCR Text" section
+- ✅ **Images**: Extract OCR text and display in "Original OCR Text" section  
+- ✅ **Enhanced Processing**: AI analysis results properly stored and displayed
+- ✅ **Consistent Experience**: Identical processing quality for both file types
 
 ### Version 2.1.0 - Automatic Language Detection & Translation
 - **Removed language selection UI**: Eliminated manual language selection interface completely
