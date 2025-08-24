@@ -79,21 +79,21 @@ class MistralOnlyOCREngine:
             raise ValueError(f"Error encoding image: {str(e)}")
     
     def _encode_image_to_base64_for_ocr(self, image_path: str) -> str:
-        """Encode image to base64 string for Mistral OCR API - API expects application/ MIME type for all documents"""
+        """Encode image to base64 string for Mistral OCR API following official documentation exactly"""
         try:
-            # Based on API error, OCR API expects data:application/ format for all documents including images
+            # Follow official documentation format: data:image/<format>;base64,{base64_data}
             with open(image_path, "rb") as image_file:
                 image_data = base64.b64encode(image_file.read()).decode('utf-8')
                 
-                # Use application MIME type as required by OCR API error message
+                # Use image MIME type as shown in official documentation
                 file_extension = image_path.lower().split('.')[-1]
                 if file_extension in ['jpg', 'jpeg']:
-                    return f"data:application/jpeg;base64,{image_data}"
+                    return f"data:image/jpeg;base64,{image_data}"
                 elif file_extension == 'png':
-                    return f"data:application/png;base64,{image_data}"
+                    return f"data:image/png;base64,{image_data}"
                 else:
-                    # Default to application/png for other image formats
-                    return f"data:application/png;base64,{image_data}"
+                    # Default to image/png for other image formats
+                    return f"data:image/png;base64,{image_data}"
                 
         except Exception as e:
             raise ValueError(f"Error encoding image for OCR: {str(e)}")
@@ -155,25 +155,32 @@ Translate any non-English content to English while preserving the document struc
     def _extract_with_ocr_api(self, file_path: str, languages: List[str], start_time: float) -> Dict[str, Any]:
         """Extract text from both images and PDFs using Mistral OCR API following official documentation"""
         try:
-            # Determine file type and encode appropriately
+            # Determine file type and use correct document structure per official docs
             file_extension = file_path.lower().split('.')[-1]
             
             if file_extension == 'pdf':
-                # Encode PDF to base64
+                # For PDFs: use document_url structure
                 document_base64 = self._encode_pdf_to_base64(file_path)
                 print(f"PDF encoded - length: {len(document_base64)}, prefix: {document_base64[:50]}...")
-            else:
-                # Encode image to base64 following Mistral documentation format
-                document_base64 = self._encode_image_to_base64_for_ocr(file_path)
-                print(f"Image encoded - length: {len(document_base64)}, prefix: {document_base64[:50]}...")
-            
-            # Make API call to Mistral OCR endpoint following official documentation
-            response = self.client.ocr.process(
-                model="mistral-ocr-latest",
-                document={
+                
+                document_config = {
                     "type": "document_url",
                     "document_url": document_base64
-                },
+                }
+            else:
+                # For images: use image_url structure as per official documentation
+                document_base64 = self._encode_image_to_base64_for_ocr(file_path)
+                print(f"Image encoded - length: {len(document_base64)}, prefix: {document_base64[:50]}...")
+                
+                document_config = {
+                    "type": "image_url",
+                    "image_url": document_base64
+                }
+            
+            # Make API call to Mistral OCR endpoint with correct document structure
+            response = self.client.ocr.process(
+                model="mistral-ocr-latest",
+                document=document_config,
                 include_image_base64=True
             )
             
