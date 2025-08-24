@@ -80,7 +80,7 @@
                                 {% else %}{{ result.status|upper }}
                                 {% endif %}
                             </div>
-                            <div class="card-subtitle">Confidence: {{ (result.confidence * 100)|round }}%</div>
+                            <div class="card-subtitle">Confidence: {{ ((result.confidence or 0) * 100)|round }}%</div>
                         </div>
                     </div>
 
@@ -125,7 +125,7 @@
                         <div class="card-content">
                             <div class="card-title">Document Type</div>
                             <div class="card-value">{{ result.document_classification.document_type|upper|replace('_', ' ') }}</div>
-                            <div class="card-subtitle">Classification: {{ (result.document_classification.confidence * 100)|round }}% confident</div>
+                            <div class="card-subtitle">Classification: {{ ((result.document_classification.confidence or 0) * 100)|round }}% confident</div>
                         </div>
                     </div>
                     {% endif %}
@@ -140,10 +140,10 @@
                         </div>
                         <div class="card-content">
                             <div class="card-title">Quality Score</div>
-                            <div class="card-value quality-{{ 'excellent' if result.quality_assessment.quality_score.overall_score >= 0.9 else 'good' if result.quality_assessment.quality_score.overall_score >= 0.7 else 'fair' if result.quality_assessment.quality_score.overall_score >= 0.5 else 'poor' }}">
-                                {{ (result.quality_assessment.quality_score.overall_score * 100)|round }}%
+                            <div class="card-value quality-{{ 'excellent' if (result.quality_assessment.quality_score.overall_score or 0) >= 0.9 else 'good' if (result.quality_assessment.quality_score.overall_score or 0) >= 0.7 else 'fair' if (result.quality_assessment.quality_score.overall_score or 0) >= 0.5 else 'poor' }}">
+                                {{ ((result.quality_assessment.quality_score.overall_score or 0) * 100)|round }}%
                             </div>
-                            <div class="card-subtitle">{{ 'Excellent' if result.quality_assessment.quality_score.overall_score >= 0.9 else 'Good' if result.quality_assessment.quality_score.overall_score >= 0.7 else 'Fair' if result.quality_assessment.quality_score.overall_score >= 0.5 else 'Poor' }} document quality</div>
+                            <div class="card-subtitle">{{ 'Excellent' if (result.quality_assessment.quality_score.overall_score or 0) >= 0.9 else 'Good' if (result.quality_assessment.quality_score.overall_score or 0) >= 0.7 else 'Fair' if (result.quality_assessment.quality_score.overall_score or 0) >= 0.5 else 'Poor' }} document quality</div>
                         </div>
                     </div>
                     {% endif %}
@@ -212,10 +212,10 @@
                     </div>
                     <div class="warning-content">
                         <h3 class="warning-title">Potential Duplicate Detected</h3>
-                        <p class="warning-subtitle">Similar claim found with {{ (result.duplicate_detected.similarity_score * 100)|round }}% similarity</p>
+                        <p class="warning-subtitle">Similar claim found with {{ ((result.duplicate_detected.similarity_score or 0) * 100)|round }}% similarity</p>
                     </div>
                     <div class="similarity-score">
-                        <div class="score-value">{{ (result.duplicate_detected.similarity_score * 100)|round }}%</div>
+                        <div class="score-value">{{ ((result.duplicate_detected.similarity_score or 0) * 100)|round }}%</div>
                         <div class="score-label">Similarity</div>
                     </div>
                 </div>
@@ -246,7 +246,7 @@
                             <h4 class="matches-title">All Similar Claims Found:</h4>
                             {% for match in result.duplicate_detected.all_matches %}
                             <div class="match-item">
-                                <div class="match-similarity">{{ (match.similarity_score * 100)|round }}%</div>
+                                <div class="match-similarity">{{ ((match.similarity_score or 0) * 100)|round }}%</div>
                                 <div class="match-info-text">
                                     <span class="match-type">{{ match.match_type|title|replace('_', ' ') }}</span>
                                     <span class="match-details-text">{{ match.details }}</span>
@@ -330,16 +330,16 @@
                             {% if step.confidence_score is defined %}
                             <div class="step-confidence">
                                 <div class="confidence-mini-bar">
-                                    <div class="confidence-mini-fill" style="width: {{ (step.confidence_score * 100)|round }}%" data-animate="slideIn"></div>
+                                    <div class="confidence-mini-fill" style="width: {{ ((step.confidence_score or 0) * 100)|round }}%" data-animate="slideIn"></div>
                                 </div>
-                                <span class="confidence-text">{{ (step.confidence_score * 100)|round }}% confidence</span>
+                                <span class="confidence-text">{{ ((step.confidence_score or 0) * 100)|round }}% confidence</span>
                             </div>
                             {% endif %}
                             
                             {% if step.step_name == 'quality_assessment' and result.quality_assessment %}
                             <div class="step-metrics">
                                 <div class="mini-metric">
-                                    <span class="mini-value">{{ (result.quality_assessment.quality_score.overall_score * 100)|round }}%</span>
+                                    <span class="mini-value">{{ ((result.quality_assessment.quality_score.overall_score or 0) * 100)|round }}%</span>
                                     <span class="mini-label">Quality</span>
                                 </div>
                             </div>
@@ -348,7 +348,7 @@
                             {% if step.step_name == 'classification' and result.document_classification %}
                             <div class="step-metrics">
                                 <div class="mini-metric">
-                                    <span class="mini-value">{{ (result.document_classification.confidence * 100)|round }}%</span>
+                                    <span class="mini-value">{{ ((result.document_classification.confidence or 0) * 100)|round }}%</span>
                                     <span class="mini-label">Confidence</span>
                                 </div>
                                 <div class="mini-metric">
@@ -430,8 +430,8 @@
                         </div>
                         <div class="summary-row">
                             <span class="summary-label">Confidence:</span>
-                            <span class="summary-value confidence-{{ 'excellent' if result.document_classification.confidence >= 0.9 else 'good' if result.document_classification.confidence >= 0.7 else 'fair' if result.document_classification.confidence >= 0.5 else 'poor' }}">
-                                {{ (result.document_classification.confidence * 100)|round }}%
+                            <span class="summary-value confidence-{{ 'excellent' if (result.document_classification.confidence or 0) >= 0.9 else 'good' if (result.document_classification.confidence or 0) >= 0.7 else 'fair' if (result.document_classification.confidence or 0) >= 0.5 else 'poor' }}">
+                                {{ ((result.document_classification.confidence or 0) * 100)|round }}%
                             </span>
                         </div>
                     </div>
@@ -441,10 +441,10 @@
                         <div class="confidence-display">
                             <div class="confidence-label">Classification Confidence</div>
                             <div class="confidence-bar-container">
-                                <div class="confidence-fill confidence-{{ 'excellent' if result.document_classification.confidence >= 0.9 else 'good' if result.document_classification.confidence >= 0.7 else 'fair' if result.document_classification.confidence >= 0.5 else 'poor' }}" 
-                                     style="width: {{ (result.document_classification.confidence * 100)|round }}%"></div>
+                                <div class="confidence-fill confidence-{{ 'excellent' if (result.document_classification.confidence or 0) >= 0.9 else 'good' if (result.document_classification.confidence or 0) >= 0.7 else 'fair' if (result.document_classification.confidence or 0) >= 0.5 else 'poor' }}" 
+                                     style="width: {{ ((result.document_classification.confidence or 0) * 100)|round }}%"></div>
                             </div>
-                            <div class="confidence-text">{{ (result.document_classification.confidence * 100)|round }}%</div>
+                            <div class="confidence-text">{{ ((result.document_classification.confidence or 0) * 100)|round }}%</div>
                         </div>
                         
                         {% if result.document_classification.features_detected %}
@@ -489,7 +489,7 @@
                             <div class="quality-gauge-wrapper">
                                 <canvas id="overallQualityGauge" width="200" height="120"></canvas>
                                 <div class="gauge-info">
-                                    <div class="gauge-value" id="overallQualityValue">{{ (result.quality_assessment.quality_score.overall_score * 100)|round }}%</div>
+                                    <div class="gauge-value" id="overallQualityValue">{{ ((result.quality_assessment.quality_score.overall_score or 0) * 100)|round }}%</div>
                                     <div class="gauge-label">Overall Quality</div>
                                 </div>
                             </div>
@@ -499,42 +499,42 @@
                         <div class="quality-metrics-interactive">
                             {% if result.quality_assessment.quality_score.readability_score %}
                             <div class="quality-metric-interactive" data-animate="true">
-                                <div class="metric-circle" data-percent="{{ (result.quality_assessment.quality_score.readability_score * 100)|round }}">
+                                <div class="metric-circle" data-percent="{{ ((result.quality_assessment.quality_score.readability_score or 0) * 100)|round }}">
                                     <div class="metric-circle-inner">
-                                        <span class="metric-value">{{ (result.quality_assessment.quality_score.readability_score * 100)|round }}%</span>
+                                        <span class="metric-value">{{ ((result.quality_assessment.quality_score.readability_score or 0) * 100)|round }}%</span>
                                     </div>
                                 </div>
                                 <div class="metric-label">Readability</div>
-                                <div class="metric-status {{ 'excellent' if result.quality_assessment.quality_score.readability_score >= 0.9 else 'good' if result.quality_assessment.quality_score.readability_score >= 0.7 else 'fair' if result.quality_assessment.quality_score.readability_score >= 0.5 else 'poor' }}">
-                                    {{ 'Excellent' if result.quality_assessment.quality_score.readability_score >= 0.9 else 'Good' if result.quality_assessment.quality_score.readability_score >= 0.7 else 'Fair' if result.quality_assessment.quality_score.readability_score >= 0.5 else 'Poor' }}
+                                <div class="metric-status {{ 'excellent' if (result.quality_assessment.quality_score.readability_score or 0) >= 0.9 else 'good' if (result.quality_assessment.quality_score.readability_score or 0) >= 0.7 else 'fair' if (result.quality_assessment.quality_score.readability_score or 0) >= 0.5 else 'poor' }}">
+                                    {{ 'Excellent' if (result.quality_assessment.quality_score.readability_score or 0) >= 0.9 else 'Good' if (result.quality_assessment.quality_score.readability_score or 0) >= 0.7 else 'Fair' if (result.quality_assessment.quality_score.readability_score or 0) >= 0.5 else 'Poor' }}
                                 </div>
                             </div>
                             {% endif %}
                             
                             {% if result.quality_assessment.quality_score.clarity_score %}
                             <div class="quality-metric-interactive" data-animate="true">
-                                <div class="metric-circle" data-percent="{{ (result.quality_assessment.quality_score.clarity_score * 100)|round }}">
+                                <div class="metric-circle" data-percent="{{ ((result.quality_assessment.quality_score.clarity_score or 0) * 100)|round }}">
                                     <div class="metric-circle-inner">
-                                        <span class="metric-value">{{ (result.quality_assessment.quality_score.clarity_score * 100)|round }}%</span>
+                                        <span class="metric-value">{{ ((result.quality_assessment.quality_score.clarity_score or 0) * 100)|round }}%</span>
                                     </div>
                                 </div>
                                 <div class="metric-label">Clarity</div>
-                                <div class="metric-status {{ 'excellent' if result.quality_assessment.quality_score.clarity_score >= 0.9 else 'good' if result.quality_assessment.quality_score.clarity_score >= 0.7 else 'fair' if result.quality_assessment.quality_score.clarity_score >= 0.5 else 'poor' }}">
-                                    {{ 'Excellent' if result.quality_assessment.quality_score.clarity_score >= 0.9 else 'Good' if result.quality_assessment.quality_score.clarity_score >= 0.7 else 'Fair' if result.quality_assessment.quality_score.clarity_score >= 0.5 else 'Poor' }}
+                                <div class="metric-status {{ 'excellent' if (result.quality_assessment.quality_score.clarity_score or 0) >= 0.9 else 'good' if (result.quality_assessment.quality_score.clarity_score or 0) >= 0.7 else 'fair' if (result.quality_assessment.quality_score.clarity_score or 0) >= 0.5 else 'poor' }}">
+                                    {{ 'Excellent' if (result.quality_assessment.quality_score.clarity_score or 0) >= 0.9 else 'Good' if (result.quality_assessment.quality_score.clarity_score or 0) >= 0.7 else 'Fair' if (result.quality_assessment.quality_score.clarity_score or 0) >= 0.5 else 'Poor' }}
                                 </div>
                             </div>
                             {% endif %}
                             
                             {% if result.quality_assessment.quality_score.completeness_score %}
                             <div class="quality-metric-interactive" data-animate="true">
-                                <div class="metric-circle" data-percent="{{ (result.quality_assessment.quality_score.completeness_score * 100)|round }}">
+                                <div class="metric-circle" data-percent="{{ ((result.quality_assessment.quality_score.completeness_score or 0) * 100)|round }}">
                                     <div class="metric-circle-inner">
-                                        <span class="metric-value">{{ (result.quality_assessment.quality_score.completeness_score * 100)|round }}%</span>
+                                        <span class="metric-value">{{ ((result.quality_assessment.quality_score.completeness_score or 0) * 100)|round }}%</span>
                                     </div>
                                 </div>
                                 <div class="metric-label">Completeness</div>
-                                <div class="metric-status {{ 'excellent' if result.quality_assessment.quality_score.completeness_score >= 0.9 else 'good' if result.quality_assessment.quality_score.completeness_score >= 0.7 else 'fair' if result.quality_assessment.quality_score.completeness_score >= 0.5 else 'poor' }}">
-                                    {{ 'Excellent' if result.quality_assessment.quality_score.completeness_score >= 0.9 else 'Good' if result.quality_assessment.quality_score.completeness_score >= 0.7 else 'Fair' if result.quality_assessment.quality_score.completeness_score >= 0.5 else 'Poor' }}
+                                <div class="metric-status {{ 'excellent' if (result.quality_assessment.quality_score.completeness_score or 0) >= 0.9 else 'good' if (result.quality_assessment.quality_score.completeness_score or 0) >= 0.7 else 'fair' if (result.quality_assessment.quality_score.completeness_score or 0) >= 0.5 else 'poor' }}">
+                                    {{ 'Excellent' if (result.quality_assessment.quality_score.completeness_score or 0) >= 0.9 else 'Good' if (result.quality_assessment.quality_score.completeness_score or 0) >= 0.7 else 'Fair' if (result.quality_assessment.quality_score.completeness_score or 0) >= 0.5 else 'Poor' }}
                                 </div>
                             </div>
                             {% endif %}
@@ -645,9 +645,9 @@
                                     <div class="threshold-requirement">
                                         <strong>Required:</strong> ≥70% (0.7) to pass validation
                                     </div>
-                                    <div class="current-score {{ 'pass' if result.document_classification.confidence >= 0.7 else 'fail' }}">
-                                        <strong>Current:</strong> {{ (result.document_classification.confidence * 100)|round }}% 
-                                        ({{ "✓ Pass" if result.document_classification.confidence >= 0.7 else "✗ Fail" }})
+                                    <div class="current-score {{ 'pass' if (result.document_classification.confidence or 0) >= 0.7 else 'fail' }}">
+                                        <strong>Current:</strong> {{ ((result.document_classification.confidence or 0) * 100)|round }}% 
+                                        ({{ "✓ Pass" if (result.document_classification.confidence or 0) >= 0.7 else "✗ Fail" }})
                                     </div>
                                 </div>
                             </div>
@@ -714,10 +714,10 @@
                 <div class="confidence-display">
                     <div class="confidence-label">Decision Confidence</div>
                     <div class="confidence-bar-container">
-                        <div class="confidence-fill confidence-{{ 'excellent' if result.confidence >= 0.9 else 'good' if result.confidence >= 0.7 else 'fair' if result.confidence >= 0.5 else 'poor' }}" 
-                             style="width: {{ (result.confidence * 100)|round }}%"></div>
+                        <div class="confidence-fill confidence-{{ 'excellent' if (result.confidence or 0) >= 0.9 else 'good' if (result.confidence or 0) >= 0.7 else 'fair' if (result.confidence or 0) >= 0.5 else 'poor' }}" 
+                             style="width: {{ ((result.confidence or 0) * 100)|round }}%"></div>
                     </div>
-                    <div class="confidence-text">{{ (result.confidence * 100)|round }}%</div>
+                    <div class="confidence-text">{{ ((result.confidence or 0) * 100)|round }}%</div>
                 </div>
                 
                 {% if result.decision_reasons %}
