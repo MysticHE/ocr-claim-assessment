@@ -49,132 +49,109 @@
                     </div>
                 </div>
 
-                <!-- Enhanced 5-Step Workflow in Single Horizontal Row -->
-                <div class="workflow-summary-enhanced">
-                    <!-- Single Row: All 5 Steps -->
-                    <div class="workflow-row">
-                        <!-- Document Classification -->
-                        {% if result.document_classification %}
-                        <div class="workflow-step-enhanced document-classification {{ 'completed' if result.document_classification else 'pending' }}">
-                            <div class="step-header">
-                                <div class="step-title">Document Classification</div>
-                            </div>
-                            <div class="step-body">
-                                <div class="step-value">
+                <!-- Claim Processing Summary Grid -->
+                <div class="analysis-card-wide summary-card-wide">
+                    <div class="card-content-wide">
+                        <div class="extracted-data-grid-wide">
+                            <!-- Document Classification -->
+                            {% if result.document_classification %}
+                            <div class="extracted-field-wide">
+                                <div class="field-label-wide">Document Type</div>
+                                <div class="field-value-wide">
                                     {% set doc_type = result.document_classification.document_type|lower %}
                                     {% if 'receipt' in doc_type or 'invoice' in doc_type %}
-                                        📧 Claims Receipt
+                                        Claims Receipt
                                     {% elif 'referral' in doc_type or 'letter' in doc_type %}
-                                        📋 Referral Letter  
+                                        Referral Letter  
                                     {% elif 'memo' in doc_type %}
-                                        📝 Memo
+                                        Memo
                                     {% elif 'diagnostic' in doc_type or 'medical' in doc_type %}
-                                        🩺 Medical Document
+                                        Medical Document
                                     {% elif 'prescription' in doc_type %}
-                                        💊 Prescription
+                                        Prescription
                                     {% else %}
-                                        📄 {{ result.document_classification.document_type|title|replace('_', ' ') }}
+                                        {{ result.document_classification.document_type|title|replace('_', ' ') }}
                                     {% endif %}
                                 </div>
-                                <div class="step-confidence">{{ ((result.document_classification.confidence or 0) * 100)|round }}% confident</div>
                             </div>
-                        </div>
-                        {% endif %}
-
-                        <!-- Claim Details Extraction -->
-                        <div class="workflow-step-enhanced claim-extraction {{ 'completed' if result.extracted_data else 'pending' }}">
-                            <div class="step-header">
-                                <div class="step-title">Claim Details Extraction</div>
+                            {% endif %}
+                            
+                            <!-- Currency -->
+                            <div class="extracted-field-wide">
+                                <div class="field-label-wide">Currency</div>
+                                <div class="field-value-wide">{{ result.extracted_data.currency or 'SGD' }}</div>
                             </div>
-                            <div class="step-body">
-                                {% if result.extracted_data %}
-                                <div class="step-details-compact">
-                                    {% if result.extracted_data.visit_date or result.extracted_data.incurred_date or result.extracted_data.date %}
-                                    <div class="detail-item-compact">📅 {{ result.extracted_data.visit_date or result.extracted_data.incurred_date or result.extracted_data.date or 'Not found' }}</div>
-                                    {% endif %}
-                                    {% if result.extracted_data.diagnosis or result.extracted_data.illness or result.extracted_data.claim_reason %}
-                                    <div class="detail-item-compact">🩺 {{ result.extracted_data.diagnosis or result.extracted_data.illness or result.extracted_data.claim_reason or 'Not found' }}</div>
-                                    {% endif %}
-                                    {% if result.extracted_data.amount or result.extracted_data.total_amount or result.extracted_data.claim_amount %}
-                                    <div class="detail-item-compact">💰 {{ result.extracted_data.amount or result.extracted_data.total_amount or result.extracted_data.claim_amount or 'Not found' }}</div>
-                                    {% endif %}
-                                </div>
-                                {% else %}
-                                <div class="step-value">❌ No claim details extracted</div>
-                                {% endif %}
+                            
+                            <!-- Patient ID -->
+                            {% if result.extracted_data.patient_id or result.extracted_data.id %}
+                            <div class="extracted-field-wide">
+                                <div class="field-label-wide">Patient ID</div>
+                                <div class="field-value-wide">{{ result.extracted_data.patient_id or result.extracted_data.id or 'ES' }}</div>
                             </div>
-                        </div>
-
-                        <!-- Document Readability Assessment -->
-                        <div class="workflow-step-enhanced readability-assessment {{ 'completed' if result.quality_assessment else 'pending' }}">
-                            <div class="step-header">
-                                <div class="step-title">Document Readability</div>
+                            {% endif %}
+                            
+                            <!-- Claim Number -->
+                            {% if result.extracted_data.claim_number or result.extracted_data.reference %}
+                            <div class="extracted-field-wide">
+                                <div class="field-label-wide">Claim Number</div>
+                                <div class="field-value-wide">{{ result.extracted_data.claim_number or result.extracted_data.reference or 'None' }}</div>
                             </div>
-                            <div class="step-body">
-                                {% if result.quality_assessment %}
-                                    {% if result.quality_assessment.quality_score.overall_score >= 0.8 %}
-                                        <div class="step-value">📄 Excellent Clarity</div>
-                                        <div class="readability-info">Very clear and readable</div>
-                                    {% elif result.quality_assessment.quality_score.overall_score >= 0.6 %}
-                                        <div class="step-value">📖 Good Clarity</div>
-                                        <div class="readability-info">Clear with minor issues</div>
-                                    {% elif result.quality_assessment.quality_score.overall_score >= 0.4 %}
-                                        <div class="step-value">📝 Moderate Clarity</div>
-                                        <div class="readability-info">Readable but blurred</div>
-                                    {% else %}
-                                        <div class="step-value">📋 Poor Clarity</div>
-                                        <div class="readability-info">Difficult to read</div>
-                                    {% endif %}
-                                {% else %}
-                                    <div class="step-value">📄 Standard Quality</div>
-                                    <div class="readability-info">No quality issues detected</div>
-                                {% endif %}
+                            {% endif %}
+                            
+                            <!-- Patient Name -->
+                            {% if result.extracted_data.patient_name or result.extracted_data.name %}
+                            <div class="extracted-field-wide">
+                                <div class="field-label-wide">Patient Name</div>
+                                <div class="field-value-wide">{{ result.extracted_data.patient_name or result.extracted_data.name or 'Clinical' }}</div>
                             </div>
-                        </div>
-
-                        <!-- Fraud Detection -->
-                        <div class="workflow-step-enhanced fraud-detection {{ 'completed' if result.fraud_findings is defined else 'pending' }}">
-                            <div class="step-header">
-                                <div class="step-title">Fraud Detection</div>
+                            {% endif %}
+                            
+                            <!-- Total Amount -->
+                            {% if result.extracted_data.amount or result.extracted_data.total_amount or result.extracted_data.claim_amount %}
+                            <div class="extracted-field-wide">
+                                <div class="field-label-wide">Total Amount</div>
+                                <div class="field-value-wide">{{ result.extracted_data.amount or result.extracted_data.total_amount or result.extracted_data.claim_amount or 'None' }}</div>
                             </div>
-                            <div class="step-body">
-                                {% if result.fraud_findings is defined %}
-                                    {% if result.fraud_findings|length > 0 %}
-                                    <div class="step-value fraud-detected">🚨 {{ result.fraud_findings|length }} Issue(s) Detected</div>
-                                    <div class="fraud-summary">
-                                        {% if result.duplicate_detected %}
-                                        <span class="fraud-indicator">🔄 Duplicate</span>
-                                        {% endif %}
-                                        <span class="fraud-indicator">⚠ Requires Review</span>
-                                    </div>
-                                    {% else %}
-                                    <div class="step-value no-fraud">✅ Clean Validation</div>
-                                    <div class="fraud-summary">No suspicious patterns</div>
-                                    {% endif %}
-                                {% else %}
-                                <div class="step-value">⏳ Fraud check pending</div>
-                                {% endif %}
+                            {% endif %}
+                            
+                            <!-- Policy Number -->
+                            {% if result.extracted_data.policy_number %}
+                            <div class="extracted-field-wide">
+                                <div class="field-label-wide">Policy Number</div>
+                                <div class="field-value-wide">{{ result.extracted_data.policy_number or 'None' }}</div>
                             </div>
-                        </div>
-
-                        <!-- Final Decision -->
-                        <div class="workflow-step-enhanced final-decision decision-card {{ result.status }}">
-                            <div class="step-header">
-                                <div class="step-title">Decision</div>
+                            {% endif %}
+                            
+                            <!-- Provider Name -->
+                            {% if result.extracted_data.provider_name or result.extracted_data.doctor or result.extracted_data.clinic %}
+                            <div class="extracted-field-wide">
+                                <div class="field-label-wide">Provider Name</div>
+                                <div class="field-value-wide">{{ result.extracted_data.provider_name or result.extracted_data.doctor or result.extracted_data.clinic or 'AI Treatment Including Diagnostics Tests Due Illness Or Injury.' }}</div>
                             </div>
-                            <div class="step-body">
-                                <div class="step-value decision-value {{ result.status }}">
+                            {% endif %}
+                            
+                            <!-- Diagnosis Codes -->
+                            {% if result.extracted_data.diagnosis_codes or result.extracted_data.icd_codes %}
+                            <div class="extracted-field-wide">
+                                <div class="field-label-wide">Diagnosis Codes</div>
+                                <div class="field-value-wide">{{ result.extracted_data.diagnosis_codes or result.extracted_data.icd_codes or '[]' }}</div>
+                            </div>
+                            {% endif %}
+                            
+                            <!-- Decision -->
+                            <div class="extracted-field-wide">
+                                <div class="field-label-wide">Decision</div>
+                                <div class="field-value-wide">
                                     {% if result.status == 'approved' %}
-                                        ✅ APPROVED
+                                        APPROVED
                                     {% elif result.status == 'rejected' %}
-                                        ❌ REJECTED
+                                        REJECTED
                                     {% elif result.status == 'review' %}
-                                        ⚠️ REVIEW REQUIRED
+                                        REVIEW REQUIRED
                                     {% else %}
-                                        ⏳ {{ result.status|upper }}
+                                        {{ result.status|upper }}
                                     {% endif %}
                                 </div>
-                                <div class="decision-confidence">{{ ((result.confidence or 0) * 100)|round }}% confidence</div>
                             </div>
                         </div>
                     </div>
@@ -270,17 +247,25 @@
                                 <span class="ai-badge">Smart Extraction</span>
                             </div>
                             <div class="header-right">
-                                <span class="data-count">{{ result.extracted_data.keys()|length }} fields extracted</span>
+                                {% set filtered_count = 0 %}
+                                {% for key, value in result.extracted_data.items() %}
+                                    {% if key|lower not in ['quality_issues', 'treatment_dates', 'processing_stage', 'quality_acceptable', 'ai_confidence_scores', 'document_quality_score', 'workflow_steps_completed', 'document_classification_confidence'] %}
+                                        {% set filtered_count = filtered_count + 1 %}
+                                    {% endif %}
+                                {% endfor %}
+                                <span class="data-count">{{ filtered_count }} fields extracted</span>
                             </div>
                         </div>
                         
                         <div class="card-content-wide">
                             <div class="extracted-data-grid-wide">
                                 {% for key, value in result.extracted_data.items() %}
-                                <div class="extracted-field-wide">
-                                    <div class="field-label-wide">{{ key|replace('_', ' ')|title }}</div>
-                                    <div class="field-value-wide">{{ value }}</div>
-                                </div>
+                                    {% if key|lower not in ['quality_issues', 'treatment_dates', 'processing_stage', 'quality_acceptable', 'ai_confidence_scores', 'document_quality_score', 'workflow_steps_completed', 'document_classification_confidence'] %}
+                                    <div class="extracted-field-wide">
+                                        <div class="field-label-wide">{{ key|replace('_', ' ')|title }}</div>
+                                        <div class="field-value-wide">{{ value }}</div>
+                                    </div>
+                                    {% endif %}
                                 {% endfor %}
                             </div>
                         </div>
