@@ -184,13 +184,38 @@ Translate any non-English content to English while preserving the document struc
                 include_image_base64=True
             )
             
-            # Extract text from OCR response
+            # Extract text from OCR response with detailed debugging
             extracted_text = ""
-            if response.pages:
+            
+            # Debug: Print the entire response structure to understand what we're getting
+            print(f"DEBUG: OCR Response type: {type(response)}")
+            print(f"DEBUG: OCR Response attributes: {dir(response)}")
+            
+            if hasattr(response, 'pages') and response.pages:
+                print(f"DEBUG: Found {len(response.pages)} pages")
+                for i, page in enumerate(response.pages):
+                    print(f"DEBUG: Page {i} attributes: {dir(page)}")
+                    if hasattr(page, 'markdown'):
+                        print(f"DEBUG: Page {i} markdown: {page.markdown[:100]}...")
+                    if hasattr(page, 'text'):
+                        print(f"DEBUG: Page {i} text: {page.text[:100]}...")
+                
                 # Combine text from all pages
                 extracted_text = "\n\n".join([
                     page.markdown for page in response.pages if hasattr(page, 'markdown') and page.markdown
                 ])
+            else:
+                print("DEBUG: No pages found in response")
+                # Check if there are other fields in the response
+                if hasattr(response, 'text'):
+                    extracted_text = response.text
+                    print(f"DEBUG: Found direct text field: {extracted_text[:100]}...")
+                elif hasattr(response, 'content'):
+                    extracted_text = response.content
+                    print(f"DEBUG: Found content field: {extracted_text[:100]}...")
+            
+            print(f"DEBUG: Final extracted text length: {len(extracted_text)}")
+            print(f"DEBUG: Final extracted text preview: {extracted_text[:200]}...")
             
             processing_time = (time.time() - start_time) * 1000
             
