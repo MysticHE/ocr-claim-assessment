@@ -42,24 +42,24 @@
   font-size: 1.375rem; /* Reduced from 1.5rem */
 }
 
-/* Enhanced 5-Step Workflow - 2 Horizontal Rows */
+/* Enhanced 5-Step Workflow - Single Horizontal Row */
 .workflow-summary-enhanced {
   margin-bottom: 2rem;
 }
 
 .workflow-row {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  grid-template-columns: repeat(5, 1fr);
   gap: 1.5rem;
   margin-bottom: 1.5rem;
 }
 
 .workflow-row.first-row {
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(5, 1fr);
 }
 
 .workflow-row.second-row {
-  grid-template-columns: repeat(2, 1fr);
+  display: none; /* Hide second row since we're using single row */
 }
 
 /* Enhanced Individual Workflow Step Cards */
@@ -68,7 +68,7 @@
   border-radius: 16px;
   padding: 1.5rem;
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
-  border: 1px solid #e2e8f0;
+  border: 2px solid #e2e8f0; /* Stronger border for better definition */
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   overflow: hidden;
@@ -107,7 +107,7 @@
 .workflow-step-enhanced .step-title {
   font-weight: 700;
   font-size: 1rem;
-  color: #1f2937;
+  color: #111827; /* Darker text for better visibility */
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -122,7 +122,7 @@
 .workflow-step-enhanced .step-value {
   font-size: 1.125rem;
   font-weight: 600;
-  color: #111827;
+  color: #000000; /* Pure black for maximum visibility */
   line-height: 1.4;
 }
 
@@ -131,8 +131,8 @@
 .workflow-step-enhanced .fraud-summary,
 .workflow-step-enhanced .decision-confidence {
   font-size: 0.875rem;
-  color: #6b7280;
-  font-weight: 500;
+  color: #374151; /* Darker text for better visibility */
+  font-weight: 600; /* Increased weight for better readability */
 }
 
 /* Enhanced Step Details */
@@ -144,11 +144,12 @@
 
 .detail-item-compact {
   font-size: 0.875rem;
-  color: #4b5563;
+  color: #1f2937; /* Much darker text for better visibility */
   display: flex;
   align-items: center;
   gap: 0.5rem;
   padding: 0.25rem 0;
+  font-weight: 500; /* Added weight for better readability */
 }
 
 .fraud-summary {
@@ -160,16 +161,18 @@
 
 .fraud-indicator {
   background: #fef2f2;
-  color: #991b1b;
+  color: #7f1d1d; /* Darker red for better visibility */
   padding: 0.25rem 0.5rem;
   border-radius: 6px;
   font-size: 0.75rem;
-  font-weight: 500;
+  font-weight: 600; /* Increased weight for better readability */
+  border: 1px solid #fca5a5; /* Added border for better definition */
 }
 
-/* Enhanced Step-specific Color Schemes */
+/* Enhanced Step-specific Color Schemes with Better Contrast */
 .workflow-step-enhanced.step-1 {
-  border-left: 4px solid #8b5cf6;
+  border-left: 6px solid #8b5cf6; /* Thicker border */
+  background: linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%); /* Light purple background */
 }
 
 .workflow-step-enhanced.step-1 .step-number {
@@ -178,7 +181,8 @@
 }
 
 .workflow-step-enhanced.step-2 {
-  border-left: 4px solid #10b981;
+  border-left: 6px solid #10b981; /* Thicker border */
+  background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%); /* Light green background */
 }
 
 .workflow-step-enhanced.step-2 .step-number {
@@ -187,7 +191,8 @@
 }
 
 .workflow-step-enhanced.step-3 {
-  border-left: 4px solid #f59e0b;
+  border-left: 6px solid #f59e0b; /* Thicker border */
+  background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%); /* Light amber background */
 }
 
 .workflow-step-enhanced.step-3 .step-number {
@@ -196,7 +201,8 @@
 }
 
 .workflow-step-enhanced.step-4 {
-  border-left: 4px solid #ef4444;
+  border-left: 6px solid #ef4444; /* Thicker border */
+  background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%); /* Light red background */
 }
 
 .workflow-step-enhanced.step-4 .step-number {
@@ -205,7 +211,8 @@
 }
 
 .workflow-step-enhanced.step-5 {
-  border-left: 4px solid #6366f1;
+  border-left: 6px solid #6366f1; /* Thicker border */
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); /* Light blue background */
 }
 
 .workflow-step-enhanced.step-5 .step-number {
@@ -1197,11 +1204,11 @@
   --enhanced-border: #e2e8f0;
 }
 
-/* Status-specific color improvements */
-.approved, .success { color: var(--enhanced-success) !important; }
-.rejected, .error { color: var(--enhanced-error) !important; }
-.review, .warning { color: var(--enhanced-warning) !important; }
-.info { color: var(--enhanced-info) !important; }
+/* Status-specific color improvements with enhanced visibility */
+.approved, .success { color: #065f46 !important; font-weight: 600 !important; } /* Darker green */
+.rejected, .error { color: #991b1b !important; font-weight: 600 !important; } /* Darker red */
+.review, .warning { color: #92400e !important; font-weight: 600 !important; } /* Darker amber */
+.info { color: #075985 !important; font-weight: 600 !important; } /* Darker blue */
 
 /* Responsive Optimizations */
 @media (max-width: 1200px) {
@@ -1211,13 +1218,17 @@
   }
   
   .workflow-row {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, 1fr); /* 2 columns on medium screens */
     gap: 1rem;
   }
   
-  .workflow-row.first-row,
+  .workflow-row.first-row {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
   .workflow-row.second-row {
-    grid-template-columns: 1fr;
+    display: grid; /* Re-enable for smaller screens */
+    grid-template-columns: repeat(2, 1fr);
   }
   
   .analysis-cards-horizontal {
@@ -1260,9 +1271,13 @@
   }
   
   .workflow-row {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr; /* Single column on mobile */
     gap: 0.75rem;
     margin-bottom: 1rem;
+  }
+  
+  .workflow-row.second-row {
+    display: grid; /* Show all cards on mobile */
   }
   
   .workflow-step-enhanced {
