@@ -291,6 +291,13 @@
             }
 
             selectedFile = file;
+            
+            // IMPORTANT: Update the file input element for drag & drop files
+            // Create a new FileList with the dropped file
+            const dataTransfer = new DataTransfer();
+            dataTransfer.items.add(file);
+            fileInput.files = dataTransfer.files;
+            
             showFilePreview(file);
             submitBtn.disabled = false;
             hideError();
@@ -335,6 +342,17 @@
             
             // Prepare form data
             const formData = new FormData(this);
+            
+            // Debug: Check if file is in form data
+            console.log('Selected file:', selectedFile?.name);
+            console.log('Form data file:', formData.get('file')?.name);
+            console.log('File input files:', fileInput.files.length);
+            
+            // Ensure the selected file is included (for drag & drop compatibility)
+            if (selectedFile && !formData.get('file')) {
+                formData.set('file', selectedFile);
+                console.log('Added selected file to form data');
+            }
             
             // Submit form
             fetch(this.action, {
