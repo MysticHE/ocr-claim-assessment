@@ -404,6 +404,7 @@ def view_enhanced_results(claim_id):
             'validation_issues': enhanced_data.get('validation_issues', []) if enhanced_data else [],
             'ai_engines_used': enhanced_data.get('ai_engines_used', []) if enhanced_data else [],
             'workflow_completion': enhanced_data.get('workflow_completion', {}) if enhanced_data else {},
+            'duplicate_detected': enhanced_data.get('duplicate_detected', None) if enhanced_data else None,
             
             # For backward compatibility and debugging
             'metadata': claim_data.get('metadata', {}),
@@ -421,7 +422,22 @@ def view_enhanced_results(claim_id):
                              result=result)
         
     except Exception as e:
-        flash('Error retrieving enhanced results', 'error')
+        print(f"❌ Error in view_enhanced_results for claim {claim_id}:")
+        print(f"   Error type: {type(e).__name__}")
+        print(f"   Error message: {str(e)}")
+        import traceback
+        print(f"   Traceback: {traceback.format_exc()}")
+        
+        # More specific error messages
+        error_msg = f'Error retrieving enhanced results: {str(e)}'
+        if 'database' in str(e).lower():
+            error_msg = 'Database connection error. Please check environment variables.'
+        elif 'not found' in str(e).lower():
+            error_msg = f'Claim {claim_id} not found in database.'
+        elif 'metadata' in str(e).lower():
+            error_msg = 'Enhanced results data is corrupted or missing.'
+            
+        flash(error_msg, 'error')
         return redirect(url_for('index'))
 
 @app.route('/api/status/<claim_id>')
@@ -453,6 +469,61 @@ def too_large(e):
         'success': False,
         'error': f'File too large. Maximum size: {Config.MAX_FILE_SIZE // (1024*1024)}MB'
     }), 413
+
+@app.route('/debug/<claim_id>')
+def debug_enhanced_results(claim_id):
+    """Debug route to diagnose enhanced results issues"""
+    debug_info = {
+        'claim_id': claim_id,
+        'timestamp': datetime.now().isoformat(),
+        'environment': {
+            'MISTRAL_API_KEY': 'SET' if os.getenv('MISTRAL_API_KEY') else 'MISSING',
+            'SUPABASE_URL': 'SET' if os.getenv('SUPABASE_URL') else 'MISSING',
+            'SUPABASE_SERVICE_KEY': 'SET' if os.getenv('SUPABASE_SERVICE_KEY') else 'MISSING'
+        },
+        'services': {
+            'database': db is not None,
+            'ocr_engine': ocr_engine is not None,
+            'claim_processor': claim_processor is not None,
+            'enhanced_claim_processor': enhanced_claim_processor is not None
+        },
+        'claim_data': None,
+        'enhanced_data': None,
+        'error': None
+    }
+    
+    try:
+        if db:
+            # Try to get claim data
+            claim_result = db.get_claim(claim_id)
+            if claim_result.data:
+                claim_data = claim_result.data[0]
+                debug_info['claim_data'] = {
+                    'exists': True,
+                    'keys': list(claim_data.keys()),
+                    'metadata_type': type(claim_data.get('metadata')).__name__,
+                    'metadata_keys': list(claim_data.get('metadata').keys()) if claim_data.get('metadata') else None
+                }
+                
+                # Check enhanced results
+                if claim_data.get('metadata') and isinstance(claim_data.get('metadata'), dict):
+                    enhanced_data = claim_data.get('metadata').get('enhanced_results')
+                    debug_info['enhanced_data'] = {
+                        'exists': enhanced_data is not None,
+                        'type': type(enhanced_data).__name__ if enhanced_data else None,
+                        'keys': list(enhanced_data.keys()) if isinstance(enhanced_data, dict) else None
+                    }
+            else:
+                debug_info['claim_data'] = {'exists': False, 'message': 'Claim not found'}
+        else:
+            debug_info['error'] = 'Database service not available'
+            
+    except Exception as e:
+        debug_info['error'] = str(e)
+        import traceback
+        debug_info['traceback'] = traceback.format_exc()
+    
+    return jsonify(debug_info)
 
 @app.route('/health')
 def health_check():
