@@ -22,6 +22,12 @@ try:
 except ImportError:
     QUALITY_ASSESSOR_AVAILABLE = False
 
+try:
+    from ai_engines.openai_parser import OpenAIParser
+    OPENAI_PARSER_AVAILABLE = True
+except ImportError:
+    OPENAI_PARSER_AVAILABLE = False
+
 @dataclass
 class EnhancedClaimData:
     """Enhanced claim data with AI analysis results"""
@@ -93,8 +99,10 @@ class EnhancedClaimProcessor:
         # Lazy loading for AI engines (initialize only when needed)
         self._document_classifier = None
         self._quality_assessor = None
+        self._openai_parser = None
         self._classifier_initialization_attempted = False
         self._assessor_initialization_attempted = False
+        self._openai_initialization_attempted = False
         
         # Streamlined workflow steps definition (8 essential steps)
         self.workflow_steps = [
@@ -194,6 +202,28 @@ class EnhancedClaimProcessor:
         """Check if quality assessor is available"""
         return QUALITY_ASSESSOR_AVAILABLE and self.quality_assessor is not None
     
+    @property
+    def openai_parser(self):
+        """Lazy-loaded OpenAI parser"""
+        if not OPENAI_PARSER_AVAILABLE:
+            return None
+            
+        if self._openai_parser is None and not self._openai_initialization_attempted:
+            self._openai_initialization_attempted = True
+            try:
+                print("Initializing OpenAI parser for intelligent data extraction...")
+                self._openai_parser = OpenAIParser()
+                print("OpenAI parser initialized successfully")
+            except Exception as e:
+                print(f"OpenAI parser not available: {e}")
+                self._openai_parser = None
+        return self._openai_parser
+    
+    @property
+    def openai_parser_available(self):
+        """Check if OpenAI parser is available and configured"""
+        return OPENAI_PARSER_AVAILABLE and self.openai_parser is not None and self.openai_parser.available
+    
     def process_enhanced_claim(self, ocr_result: Dict[str, Any], 
                              image_path: Optional[str] = None) -> Dict[str, Any]:
         """Main enhanced claim processing workflow"""
@@ -204,11 +234,18 @@ class EnhancedClaimProcessor:
         print(f"   Image path provided: {image_path is not None}")
         print(f"   Classifier available: {self.classifier_available}")
         print(f"   Quality assessor available: {self.quality_assessor_available}")
+        print(f"   OpenAI parser available: {self.openai_parser_available}")
         
-        # Fallback mode detection
-        fallback_mode = not (self.classifier_available and self.quality_assessor_available)
-        if fallback_mode:
-            print("   Running in lightweight fallback mode (no heavy AI dependencies)")
+        # Determine AI capabilities
+        has_advanced_ai = self.classifier_available and self.quality_assessor_available
+        has_openai_extraction = self.openai_parser_available
+        
+        if has_openai_extraction:
+            print("   Using OpenAI GPT-4o-mini for intelligent data extraction")
+        elif has_advanced_ai:
+            print("   Using advanced AI engines with regex-based extraction")
+        else:
+            print("   Running in lightweight fallback mode (regex-only extraction)")
         
         # Initialize workflow tracking
         workflow_steps = []
@@ -413,25 +450,90 @@ class EnhancedClaimProcessor:
     def extract_enhanced_structured_data(self, ocr_result: Dict[str, Any],
                                        classification_result=None,
                                        quality_result=None) -> EnhancedClaimData:
-        """Enhanced structured data extraction with AI context"""
+        """Enhanced structured data extraction with OpenAI intelligence and fallback to regex"""
         text = ocr_result.get('text', '')
         
         # Create enhanced claim data
         extracted = EnhancedClaimData()
         
-        # Basic extraction (reuse existing logic)
-        extracted.patient_name = self._extract_patient_name(text)
-        extracted.patient_id = self._extract_patient_id(text)
-        extracted.policy_number = self._extract_policy_number(text)
-        extracted.claim_number = self._extract_claim_number(text)
-        extracted.provider_name = self._extract_provider_name(text)
-        extracted.diagnosis_codes = self._extract_diagnosis_codes(text)
-        extracted.treatment_dates = self._extract_dates(text)
-        extracted.amounts = self._extract_amounts(text)
-        extracted.total_amount = max(extracted.amounts) if extracted.amounts else None
-        extracted.currency = self._extract_currency(text)
+        # Try OpenAI extraction first if available
+        openai_result = None
+        if self.openai_parser_available:
+            try:
+                print("Attempting OpenAI GPT-4o-mini data extraction...")
+                openai_result = self.openai_parser.extract_with_context(
+                    ocr_result, classification_result, quality_result
+                )
+                
+                if openai_result.success:
+                    print(f"OpenAI extraction successful (confidence: {openai_result.confidence:.2f})")
+                    ai_data = openai_result.extracted_data
+                    
+                    # Map OpenAI results to EnhancedClaimData
+                    extracted.patient_name = ai_data.get('patient_name')
+                    extracted.patient_id = ai_data.get('patient_id')
+                    extracted.policy_number = ai_data.get('policy_number')
+                    extracted.claim_number = ai_data.get('claim_number')
+                    extracted.provider_name = ai_data.get('provider_name')
+                    extracted.diagnosis_codes = ai_data.get('diagnosis_codes', [])
+                    extracted.treatment_dates = ai_data.get('treatment_dates', [])
+                    extracted.amounts = ai_data.get('amounts', [])
+                    extracted.total_amount = ai_data.get('total_amount')
+                    extracted.currency = ai_data.get('currency', 'SGD')
+                    
+                    # Store OpenAI insights
+                    extracted.ai_confidence_scores = {
+                        'ocr_confidence': ocr_result.get('confidence', 0.0),
+                        'extraction_confidence': openai_result.confidence,
+                        'openai_processing_time': openai_result.processing_time_ms,
+                        'extraction_method': 'openai_gpt4o_mini'
+                    }
+                    
+                    # Add document insights from OpenAI
+                    if 'document_insights' in ai_data:
+                        insights = ai_data['document_insights']
+                        extracted.quality_issues = insights.get('missing_critical_fields', [])
+                        
+                        # Update quality based on OpenAI analysis
+                        if quality_result is None:
+                            # Use OpenAI's assessment if no computer vision quality result
+                            extracted.quality_acceptable = insights.get('document_appears_genuine', True)
+                            extracted.document_quality_score = insights.get('data_completeness', 0.8)
+                    
+                else:
+                    print(f"OpenAI extraction failed: {openai_result.error}")
+                    print("   Falling back to regex-based extraction...")
+                    
+            except Exception as e:
+                print(f"OpenAI extraction error: {e}")
+                print("   Falling back to regex-based extraction...")
         
-        # Add AI analysis results
+        # Fallback to regex-based extraction if OpenAI failed or unavailable
+        if openai_result is None or not openai_result.success:
+            print("Using regex-based data extraction...")
+            
+            # Basic extraction (existing regex logic)
+            extracted.patient_name = self._extract_patient_name(text)
+            extracted.patient_id = self._extract_patient_id(text)
+            extracted.policy_number = self._extract_policy_number(text)
+            extracted.claim_number = self._extract_claim_number(text)
+            extracted.provider_name = self._extract_provider_name(text)
+            extracted.diagnosis_codes = self._extract_diagnosis_codes(text)
+            extracted.treatment_dates = self._extract_dates(text)
+            extracted.amounts = self._extract_amounts(text)
+            extracted.total_amount = max(extracted.amounts) if extracted.amounts else None
+            extracted.currency = self._extract_currency(text)
+            
+            # Set confidence scores for regex extraction
+            extracted.ai_confidence_scores = {
+                'ocr_confidence': ocr_result.get('confidence', 0.0),
+                'extraction_confidence': 0.6,  # Lower confidence for regex
+                'extraction_method': 'regex_fallback'
+            }
+            
+            print(f"Regex extraction completed - {len([x for x in [extracted.patient_name, extracted.total_amount, extracted.provider_name] if x])} key fields found")
+        
+        # Add AI analysis results from other engines
         if classification_result:
             extracted.document_type = classification_result.document_type.value
             extracted.document_classification_confidence = classification_result.confidence
@@ -441,12 +543,11 @@ class EnhancedClaimProcessor:
             extracted.quality_issues = [issue.value for issue in quality_result.issues_detected]
             extracted.quality_acceptable = quality_result.is_acceptable
         
-        # Set AI confidence scores
-        extracted.ai_confidence_scores = {
-            'ocr_confidence': ocr_result.get('confidence', 0.0),
-            'classification_confidence': classification_result.confidence if classification_result else 0.0,
-            'quality_score': quality_result.quality_score.overall_score if quality_result else 0.5
-        }
+        # Enhance AI confidence scores with other engine results
+        if 'classification_confidence' not in extracted.ai_confidence_scores:
+            extracted.ai_confidence_scores['classification_confidence'] = classification_result.confidence if classification_result else 0.0
+        if 'quality_score' not in extracted.ai_confidence_scores:
+            extracted.ai_confidence_scores['quality_score'] = quality_result.quality_score.overall_score if quality_result else 0.5
         
         # Set processing stage
         extracted.processing_stage = "data_extracted"

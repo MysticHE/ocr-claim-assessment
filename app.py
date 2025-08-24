@@ -45,6 +45,7 @@ print(f"   Python: {os.sys.version}")
 
 # Check required environment variables
 required_env_vars = ['MISTRAL_API_KEY', 'SUPABASE_URL', 'SUPABASE_SERVICE_KEY']
+optional_env_vars = ['OPENAI_API_KEY']  # OpenAI is optional - system works with fallback
 missing_vars = []
 for var in required_env_vars:
     if not os.environ.get(var):
@@ -53,6 +54,18 @@ for var in required_env_vars:
 if missing_vars:
     print(f"⚠️  Missing required environment variables: {', '.join(missing_vars)}")
     print("   Application will run in limited mode.")
+
+# Check optional environment variables
+missing_optional = []
+for var in optional_env_vars:
+    if not os.environ.get(var):
+        missing_optional.append(var)
+
+if missing_optional:
+    print(f"ℹ️  Optional environment variables not set: {', '.join(missing_optional)}")
+    print("   System will work with reduced capabilities (regex-based extraction fallback)")
+else:
+    print("✅ All optional environment variables configured - full AI capabilities enabled")
 
 # Initialize services with proper error handling
 db = None
@@ -604,6 +617,26 @@ def health_check():
             'status': 'healthy' if enhanced_claim_processor else 'unhealthy',
             'initialized': bool(enhanced_claim_processor)
         }
+        
+        # Check OpenAI parser (optional service)
+        if enhanced_claim_processor and enhanced_claim_processor.openai_parser:
+            try:
+                openai_health = enhanced_claim_processor.openai_parser.health_check()
+                health_status['services']['openai_parser'] = openai_health
+                # Note: OpenAI failure doesn't mark overall system as unhealthy since it's optional
+            except Exception as e:
+                health_status['services']['openai_parser'] = {
+                    'status': 'unavailable',
+                    'error': str(e),
+                    'available': False,
+                    'note': 'Optional service - system continues with regex fallback'
+                }
+        else:
+            health_status['services']['openai_parser'] = {
+                'status': 'not_configured',
+                'available': False,
+                'note': 'Optional service - check OPENAI_API_KEY environment variable'
+            }
         
         return jsonify(health_status), 200 if health_status['status'] == 'healthy' else 503
         
