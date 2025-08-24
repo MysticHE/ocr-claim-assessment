@@ -80,6 +80,16 @@ Extract the following information and return as valid JSON only (no additional t
   }}
 }}
 
+Special Instructions for Hospital Bills and Tax Invoices:
+- Patient names often appear in billing/payment sections (e.g., "AMOUNT DUE: TAN WENBIN", "PAYMENTS TAN WENBIN")
+- Look for ALL CAPS names in payment contexts and standalone on their own lines
+- Tax invoices from hospitals should be classified as "invoice" type
+- Names may appear multiple times - extract the most complete version
+- Singapore format: Look for patterns like "TAN WENBIN", "LEE MING HUA" (2-3 words, all caps)
+- Hospital billing amounts include various line items - extract the FINAL AMOUNT DUE or NET AMOUNT PAYABLE
+- For SGH bills: Look for "AMOUNT DUE :" followed by patient name and amount
+- Patient names often appear without labels - look for names on separate lines early in document
+
 Rules:
 - Return ONLY valid JSON, no markdown or explanations
 - Use null for missing values, not empty strings
@@ -88,6 +98,7 @@ Rules:
 - Confidence should reflect extraction certainty (0.0-1.0)
 - Be conservative with suspicious_patterns detection
 - Focus on extracting actual data present in the text
+- Pay special attention to names in payment/billing contexts
 """
     
     @property

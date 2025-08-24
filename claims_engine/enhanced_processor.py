@@ -312,6 +312,11 @@ class EnhancedClaimProcessor:
                 current_step.confidence_score = 0.6  # Lower confidence for simple classification
                 current_step.output_summary = f"Simple classification: {doc_type} (fallback mode)"
                 current_step.status = "completed"
+                
+                # Create a mock classification result for OpenAI extraction
+                from collections import namedtuple
+                ClassificationResult = namedtuple('ClassificationResult', ['document_type', 'confidence'])
+                classification_result = ClassificationResult(document_type=doc_type, confidence=0.6)
             
             current_step.end_time = datetime.now()
             workflow_steps.append(current_step)
@@ -535,7 +540,11 @@ class EnhancedClaimProcessor:
         
         # Add AI analysis results from other engines
         if classification_result:
-            extracted.document_type = classification_result.document_type.value
+            # Handle both proper classification results and fallback string results
+            if hasattr(classification_result.document_type, 'value'):
+                extracted.document_type = classification_result.document_type.value
+            else:
+                extracted.document_type = classification_result.document_type
             extracted.document_classification_confidence = classification_result.confidence
         
         if quality_result:
@@ -1021,19 +1030,61 @@ class EnhancedClaimProcessor:
     # Include existing extraction methods from original processor
     def _extract_patient_name(self, text: str) -> Optional[str]:
         """Extract patient name from text"""
-        patterns = [
+        # First try direct search for names in billing context (most reliable)
+        billing_patterns = [
+            r'amount\s+due\s*:?\s*([A-Z][A-Z\s]+?)(?:\s*:\s*|$)',  # "AMOUNT DUE : TAN WENBIN"
+            r'payments?\s*:?\s*([A-Z][A-Z\s]+?)(?:\s*:\s*|\s*\d)',   # "PAYMENTS TAN WENBIN: 11,062"
+            r'adjustment\s*:?\s*([A-Z][A-Z\s]+?)(?:\s*:\s*|\s*\d)',  # "ADJUSTMENT TAN WENBIN: 863"
+        ]
+        
+        # Look for names in billing contexts first (most reliable)
+        for pattern in billing_patterns:
+            matches = re.finditer(pattern, text, re.IGNORECASE | re.MULTILINE)
+            for match in matches:
+                name = match.group(1).strip()
+                name = re.sub(r'[^A-Za-z\s]', '', name)  # Remove numbers and special chars
+                name = ' '.join(name.split())  # Normalize whitespace
+                
+                # Validate it's a proper name (2-3 words, each 2+ chars)
+                words = name.split()
+                if (len(words) >= 2 and len(words) <= 3 and 
+                    all(len(word) >= 2 for word in words) and
+                    not any(word.lower() in ['amount', 'due', 'total', 'before', 'after', 'tax'] for word in words)):
+                    return name.title()
+        
+        # Second try: look for standalone names at beginning of lines
+        lines = text.split('\n')
+        for line in lines:
+            line = line.strip()
+            # Look for lines with just a name (like "TAN WENBIN" on its own line)
+            if re.match(r'^[A-Z]{2,}\s+[A-Z]{2,}(?:\s+[A-Z]{2,})?$', line):
+                words = line.split()
+                if (len(words) >= 2 and len(words) <= 3 and 
+                    all(len(word) >= 2 for word in words) and
+                    # Exclude obvious non-names
+                    not any(word.upper() in ['TAX', 'INVOICE', 'BILL', 'CASE', 'CUSTOMER', 'EXTERNAL', 
+                                           'ADMISSION', 'DISCHARGE', 'BILLING', 'AMOUNT', 'TOTAL',
+                                           'LABORATORY', 'INVESTIGATIONS', 'TREATMENT', 'SERVICES',
+                                           'PROCEDURES', 'PROFESSIONAL', 'SURGICAL', 'OPERATION',
+                                           'CONSUMABLES', 'DRUGS', 'PRESCRIPTIONS', 'WARD'] for word in words)):
+                    return line.title()
+        
+        # Fallback: traditional patterns
+        traditional_patterns = [
             r'patient\s*:?\s*([A-Za-z\s,]+?)(?:\n|$|[0-9])',
             r'name\s*:?\s*([A-Za-z\s,]+?)(?:\n|$|[0-9])',
             r'claimant\s*:?\s*([A-Za-z\s,]+?)(?:\n|$|[0-9])',
         ]
         
-        for pattern in patterns:
+        for pattern in traditional_patterns:
             match = re.search(pattern, text, re.IGNORECASE | re.MULTILINE)
             if match:
                 name = match.group(1).strip()
                 name = re.sub(r'[^A-Za-z\s,]', '', name)
-                if len(name) > 3:
+                name = ' '.join(name.split())
+                if len(name) >= 4 and len(name) <= 50:
                     return name.title()
+        
         return None
     
     def _extract_patient_id(self, text: str) -> Optional[str]:
@@ -1189,24 +1240,32 @@ class EnhancedClaimProcessor:
             
         text_lower = text.lower()
         
-        # Simple keyword-based classification
-        if any(keyword in text_lower for keyword in ['receipt', 'paid', 'cash', 'card', 'total amount']):
-            return "receipt"
-        elif any(keyword in text_lower for keyword in ['invoice', 'bill', 'due', 'payment']):
+        # Enhanced keyword-based classification with priority order
+        # Tax invoices and hospital bills first
+        if any(keyword in text_lower for keyword in ['tax invoice', 'tax bill']):
             return "invoice"
-        elif any(keyword in text_lower for keyword in ['referral', 'refer to', 'specialist']):
+        elif any(keyword in text_lower for keyword in ['hospital', 'medical bill', 'billing date', 'amount payable']):
+            return "invoice"
+        elif any(keyword in text_lower for keyword in ['receipt', 'paid', 'cash', 'card', 'total amount paid']):
+            return "receipt"
+        elif any(keyword in text_lower for keyword in ['invoice', 'bill to', 'amount due', 'billing', 'payable']):
+            return "invoice"
+        elif any(keyword in text_lower for keyword in ['referral', 'refer to', 'specialist', 'consultation']):
             return "referral_letter"
-        elif any(keyword in text_lower for keyword in ['prescription', 'medication', 'dosage', 'rx']):
+        elif any(keyword in text_lower for keyword in ['prescription', 'medication', 'dosage', 'rx', 'pharmacy']):
             return "prescription"
-        elif any(keyword in text_lower for keyword in ['certificate', 'medical', 'doctor', 'clinic']):
+        elif any(keyword in text_lower for keyword in ['medical certificate', 'mc', 'fitness', 'sick leave']):
             return "medical_certificate"
-        elif any(keyword in text_lower for keyword in ['diagnosis', 'report', 'test', 'result']):
+        elif any(keyword in text_lower for keyword in ['lab report', 'test results', 'diagnosis', 'laboratory']):
             return "diagnostic_report"
-        elif any(keyword in text_lower for keyword in ['memo', 'memorandum', 'note']):
+        elif any(keyword in text_lower for keyword in ['memo', 'memorandum', 'note to']):
             return "memo"
-        elif any(keyword in text_lower for keyword in ['insurance', 'claim', 'policy']):
+        elif any(keyword in text_lower for keyword in ['insurance claim', 'policy', 'coverage', 'claim form']):
             return "insurance_form"
-        elif any(keyword in text_lower for keyword in ['id', 'identity', 'nric', 'passport']):
+        elif any(keyword in text_lower for keyword in ['identity card', 'nric', 'passport', 'identification']):
             return "identity_document"
+        # Catch medical/hospital contexts even if specific type unclear
+        elif any(keyword in text_lower for keyword in ['doctor', 'clinic', 'hospital', 'medical', 'patient']):
+            return "medical_certificate"
         else:
             return "unknown"
