@@ -7,8 +7,20 @@ from datetime import datetime, timedelta
 from dataclasses import dataclass, asdict
 
 from database.models import ClaimStatus, ClaimDecision
-from ai_engines.document_classifier import DocumentClassifier, DocumentType
-from ai_engines.quality_assessor import DocumentQualityAssessor
+
+# Optional AI engines - only import if available to avoid deployment issues
+try:
+    from ai_engines.document_classifier import DocumentClassifier, DocumentType
+    CLASSIFIER_AVAILABLE = True
+except ImportError:
+    CLASSIFIER_AVAILABLE = False
+    DocumentType = None
+
+try:
+    from ai_engines.quality_assessor import DocumentQualityAssessor
+    QUALITY_ASSESSOR_AVAILABLE = True
+except ImportError:
+    QUALITY_ASSESSOR_AVAILABLE = False
 
 @dataclass
 class EnhancedClaimData:
@@ -141,6 +153,9 @@ class EnhancedClaimProcessor:
     @property
     def document_classifier(self):
         """Lazy-loaded document classifier"""
+        if not CLASSIFIER_AVAILABLE:
+            return None
+            
         if self._document_classifier is None and not self._classifier_initialization_attempted:
             self._classifier_initialization_attempted = True
             try:
@@ -149,19 +164,20 @@ class EnhancedClaimProcessor:
                 print("Document classifier initialized successfully")
             except Exception as e:
                 print(f"Document classifier not available: {e}")
-                import traceback
-                traceback.print_exc()
                 self._document_classifier = None
         return self._document_classifier
     
     @property
     def classifier_available(self):
         """Check if document classifier is available"""
-        return self.document_classifier is not None
+        return CLASSIFIER_AVAILABLE and self.document_classifier is not None
     
     @property
     def quality_assessor(self):
         """Lazy-loaded quality assessor"""
+        if not QUALITY_ASSESSOR_AVAILABLE:
+            return None
+            
         if self._quality_assessor is None and not self._assessor_initialization_attempted:
             self._assessor_initialization_attempted = True
             try:
@@ -170,15 +186,13 @@ class EnhancedClaimProcessor:
                 print("Quality assessor initialized successfully")
             except Exception as e:
                 print(f"Quality assessor not available: {e}")
-                import traceback
-                traceback.print_exc()
                 self._quality_assessor = None
         return self._quality_assessor
     
     @property
     def quality_assessor_available(self):
         """Check if quality assessor is available"""
-        return self.quality_assessor is not None
+        return QUALITY_ASSESSOR_AVAILABLE and self.quality_assessor is not None
     
     def process_enhanced_claim(self, ocr_result: Dict[str, Any], 
                              image_path: Optional[str] = None) -> Dict[str, Any]:
@@ -190,6 +204,11 @@ class EnhancedClaimProcessor:
         print(f"   Image path provided: {image_path is not None}")
         print(f"   Classifier available: {self.classifier_available}")
         print(f"   Quality assessor available: {self.quality_assessor_available}")
+        
+        # Fallback mode detection
+        fallback_mode = not (self.classifier_available and self.quality_assessor_available)
+        if fallback_mode:
+            print("   Running in lightweight fallback mode (no heavy AI dependencies)")
         
         # Initialize workflow tracking
         workflow_steps = []
@@ -223,8 +242,13 @@ class EnhancedClaimProcessor:
                 current_step.issues_found = quality_result.recommendations
                 current_step.status = "completed"
             else:
-                current_step.status = "skipped"
-                current_step.output_summary = "Quality assessment not available"
+                # Simple OCR-confidence based quality assessment fallback
+                ocr_confidence = ocr_result.get('confidence', 0.5)
+                quality_score = max(0.4, ocr_confidence)  # Minimum threshold
+                current_step.confidence_score = quality_score
+                current_step.output_summary = f"Simple quality assessment: {quality_score:.2f} (based on OCR confidence)"
+                current_step.issues_found = ["Limited quality assessment in fallback mode"]
+                current_step.status = "completed"
             
             current_step.end_time = datetime.now()
             workflow_steps.append(current_step)
@@ -246,8 +270,11 @@ class EnhancedClaimProcessor:
                 current_step.output_summary = f"Classified as: {classification_result.document_type.value}"
                 current_step.status = "completed"
             else:
-                current_step.status = "skipped"
-                current_step.output_summary = "Document classification not available"
+                # Simple text-based classification fallback
+                doc_type = self._simple_document_classification(ocr_result.get('text', ''))
+                current_step.confidence_score = 0.6  # Lower confidence for simple classification
+                current_step.output_summary = f"Simple classification: {doc_type} (fallback mode)"
+                current_step.status = "completed"
             
             current_step.end_time = datetime.now()
             workflow_steps.append(current_step)
@@ -1053,3 +1080,32 @@ class EnhancedClaimProcessor:
                 elif symbol == 'MYR':
                     return 'MYR'
         return 'SGD'
+    
+    def _simple_document_classification(self, text: str) -> str:
+        """Simple text-based document classification fallback"""
+        if not text:
+            return "unknown"
+            
+        text_lower = text.lower()
+        
+        # Simple keyword-based classification
+        if any(keyword in text_lower for keyword in ['receipt', 'paid', 'cash', 'card', 'total amount']):
+            return "receipt"
+        elif any(keyword in text_lower for keyword in ['invoice', 'bill', 'due', 'payment']):
+            return "invoice"
+        elif any(keyword in text_lower for keyword in ['referral', 'refer to', 'specialist']):
+            return "referral_letter"
+        elif any(keyword in text_lower for keyword in ['prescription', 'medication', 'dosage', 'rx']):
+            return "prescription"
+        elif any(keyword in text_lower for keyword in ['certificate', 'medical', 'doctor', 'clinic']):
+            return "medical_certificate"
+        elif any(keyword in text_lower for keyword in ['diagnosis', 'report', 'test', 'result']):
+            return "diagnostic_report"
+        elif any(keyword in text_lower for keyword in ['memo', 'memorandum', 'note']):
+            return "memo"
+        elif any(keyword in text_lower for keyword in ['insurance', 'claim', 'policy']):
+            return "insurance_form"
+        elif any(keyword in text_lower for keyword in ['id', 'identity', 'nric', 'passport']):
+            return "identity_document"
+        else:
+            return "unknown"
