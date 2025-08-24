@@ -79,35 +79,21 @@ class MistralOnlyOCREngine:
             raise ValueError(f"Error encoding image: {str(e)}")
     
     def _encode_image_to_base64_for_ocr(self, image_path: str) -> str:
-        """Encode image to base64 string for Mistral OCR API without quality degradation"""
+        """Encode image to base64 string for Mistral OCR API following official documentation"""
         try:
-            with Image.open(image_path) as img:
-                # Preserve original format and quality for better OCR results
-                original_format = img.format or 'PNG'
+            # Follow Mistral documentation format exactly
+            with open(image_path, "rb") as image_file:
+                image_data = base64.b64encode(image_file.read()).decode('utf-8')
                 
-                # Convert to RGB if necessary for JPEG, otherwise preserve mode
-                if original_format.upper() == 'JPEG' and img.mode not in ('RGB', 'L'):
-                    img = img.convert('RGB')
-                elif original_format.upper() == 'PNG' and img.mode not in ('RGB', 'RGBA', 'L', 'LA'):
-                    img = img.convert('RGBA')
-                
-                # Keep original size for better OCR quality - no resizing
-                # The OCR API can handle larger images better than Vision API
-                
-                # Convert to base64 with high quality
-                buffer = io.BytesIO()
-                
-                if original_format.upper() == 'JPEG':
-                    img.save(buffer, format='JPEG', quality=95, optimize=False)
-                    mime_type = 'image/jpeg'
+                # Determine format based on file extension
+                file_extension = image_path.lower().split('.')[-1]
+                if file_extension in ['jpg', 'jpeg']:
+                    return f"data:image/jpeg;base64,{image_data}"
+                elif file_extension == 'png':
+                    return f"data:image/png;base64,{image_data}"
                 else:
-                    # Use PNG for other formats to preserve quality
-                    img.save(buffer, format='PNG', optimize=False)
-                    mime_type = 'image/png'
-                
-                buffer.seek(0)
-                image_data = base64.b64encode(buffer.getvalue()).decode('utf-8')
-                return f"data:{mime_type};base64,{image_data}"
+                    # Default to PNG for other image formats
+                    return f"data:image/png;base64,{image_data}"
                 
         except Exception as e:
             raise ValueError(f"Error encoding image for OCR: {str(e)}")
@@ -156,25 +142,18 @@ Translate any non-English content to English while preserving the document struc
         return base_prompt.strip()
     
     def extract_text_with_mistral(self, file_path: str, languages: List[str]) -> Dict[str, Any]:
-        """Extract text using appropriate Mistral AI API (OCR for PDFs, Vision for images with OCR-focused prompts)"""
+        """Extract text using Mistral OCR API for both PDFs and images"""
         try:
             start_time = time.time()
             
-            # Determine file type and use appropriate API
-            file_extension = file_path.lower().split('.')[-1]
-            
-            if file_extension == 'pdf':
-                # Use OCR API for PDFs
-                return self._extract_with_ocr_api(file_path, languages, start_time)
-            else:
-                # Use Vision API for images but with OCR-focused prompts for raw text extraction
-                return self._extract_from_image_with_ocr_focus(file_path, languages, start_time)
+            # Use OCR API for both PDFs and images
+            return self._extract_with_ocr_api(file_path, languages, start_time)
                 
         except Exception as e:
             return self._handle_extraction_error(e, languages, start_time)
     
     def _extract_with_ocr_api(self, file_path: str, languages: List[str], start_time: float) -> Dict[str, Any]:
-        """Extract text from both images and PDFs using unified Mistral OCR API"""
+        """Extract text from both images and PDFs using Mistral OCR API following official documentation"""
         try:
             # Determine file type and encode appropriately
             file_extension = file_path.lower().split('.')[-1]
@@ -183,10 +162,10 @@ Translate any non-English content to English while preserving the document struc
                 # Encode PDF to base64
                 document_base64 = self._encode_pdf_to_base64(file_path)
             else:
-                # Encode image to base64 without quality degradation
+                # Encode image to base64 following Mistral documentation format
                 document_base64 = self._encode_image_to_base64_for_ocr(file_path)
             
-            # Make API call to Mistral OCR endpoint for both file types
+            # Make API call to Mistral OCR endpoint following official documentation
             response = self.client.ocr.process(
                 model="mistral-ocr-latest",
                 document={

@@ -15,7 +15,8 @@
       "Bash(pip install:*)",
       "Bash(find:*)",
       "Bash(grep:*)",
-      "Bash(del test_ocr_fix.py)"
+      "Bash(del test_ocr_fix.py)",
+      "WebFetch(domain:docs.mistral.ai)"
     ],
     "deny": [],
     "ask": [],
