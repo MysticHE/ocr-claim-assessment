@@ -227,129 +227,107 @@
             {% endif %}
 
 
-            <!-- Detailed Analysis Section with Progressive Disclosure -->
-            <div class="detailed-analysis">
-                <div class="analysis-header">
-                    <h3 class="analysis-title">Detailed AI Analysis</h3>
-                    <div class="view-controls">
-                        <button class="view-toggle compact-toggle" data-view="compact" title="Compact Layout">📊</button>
+            <!-- Extracted Data Card -->
+            {% if result.extracted_data %}
+            <div class="analysis-card-wide extracted-data-card">
+                <div class="card-header-wide">
+                    <div class="header-left">
+                        <h4 class="card-title-wide">📄 Extracted Data</h4>
+                        <span class="ai-badge">Smart Extraction</span>
                     </div>
                 </div>
-
-                <!-- Enhanced Analysis Cards - Two Horizontal Cards -->
-                <div class="analysis-cards-horizontal">
-                    <!-- Extracted Data Card -->
-                    {% if result.extracted_data %}
-                    <div class="analysis-card-wide extracted-data-card">
-                        <div class="card-header-wide">
-                            <div class="header-left">
-                                <h4 class="card-title-wide">📄 Extracted Data</h4>
-                                <span class="ai-badge">Smart Extraction</span>
+                
+                <div class="card-content-wide">
+                    <div class="extracted-data-grid-wide">
+                        {% for key, value in result.extracted_data.items() %}
+                            {% if key|lower not in ['quality_issues', 'treatment_dates', 'processing_stage', 'quality_acceptable', 'ai_confidence_scores', 'document_quality_score', 'workflow_steps_completed', 'document_classification_confidence'] %}
+                            <div class="extracted-field-wide">
+                                <div class="field-label-wide">{{ key|replace('_', ' ')|title }}</div>
+                                <div class="field-value-wide">{{ value }}</div>
                             </div>
-                            <div class="header-right">
-                                {% set filtered_count = 0 %}
-                                {% for key, value in result.extracted_data.items() %}
-                                    {% if key|lower not in ['quality_issues', 'treatment_dates', 'processing_stage', 'quality_acceptable', 'ai_confidence_scores', 'document_quality_score', 'workflow_steps_completed', 'document_classification_confidence'] %}
-                                        {% set filtered_count = filtered_count + 1 %}
-                                    {% endif %}
-                                {% endfor %}
-                                <span class="data-count">{{ filtered_count }} fields extracted</span>
-                            </div>
-                        </div>
-                        
-                        <div class="card-content-wide">
-                            <div class="extracted-data-grid-wide">
-                                {% for key, value in result.extracted_data.items() %}
-                                    {% if key|lower not in ['quality_issues', 'treatment_dates', 'processing_stage', 'quality_acceptable', 'ai_confidence_scores', 'document_quality_score', 'workflow_steps_completed', 'document_classification_confidence'] %}
-                                    <div class="extracted-field-wide">
-                                        <div class="field-label-wide">{{ key|replace('_', ' ')|title }}</div>
-                                        <div class="field-value-wide">{{ value }}</div>
-                                    </div>
-                                    {% endif %}
-                                {% endfor %}
-                            </div>
-                        </div>
+                            {% endif %}
+                        {% endfor %}
                     </div>
-                    {% endif %}
-
-                    <!-- Data Validation Card -->
-                    {% if result.validation_issues is defined %}
-                    <div class="analysis-card-wide validation-card">
-                        <div class="card-header-wide">
-                            <div class="header-left">
-                                <h4 class="card-title-wide">✅ Data Validation</h4>
-                                <span class="ai-badge">Rule Engine</span>
-                            </div>
-                            <div class="header-right">
-                                {% if result.validation_issues|length > 0 %}
-                                <span class="validation-status-badge failed">{{ result.validation_issues|length }} issues found</span>
-                                {% else %}
-                                <span class="validation-status-badge passed">All checks passed</span>
-                                {% endif %}
-                            </div>
-                        </div>
-                        
-                        <div class="card-content-wide">
-                            <!-- Validation Status Section -->
-                            <div class="validation-overview">
-                                {% if result.validation_issues|length > 0 %}
-                                <div class="validation-status-wide failed">
-                                    <div class="status-icon-large">⚠</div>
-                                    <div class="status-content">
-                                        <div class="status-title">Validation Issues Detected</div>
-                                        <div class="status-subtitle">{{ result.validation_issues|length }} issues require attention</div>
-                                    </div>
-                                </div>
-                                {% else %}
-                                <div class="validation-status-wide passed">
-                                    <div class="status-icon-large">✓</div>
-                                    <div class="status-content">
-                                        <div class="status-title">Validation Successful</div>
-                                        <div class="status-subtitle">All validation checks passed successfully</div>
-                                    </div>
-                                </div>
-                                {% endif %}
-                            </div>
-
-                            <!-- Detailed Validation Information -->
-                            <div class="validation-details-wide">
-                                {% if result.validation_issues|length > 0 %}
-                                <div class="validation-section">
-                                    <h5 class="section-title">Issues Found</h5>
-                                    <div class="issues-grid">
-                                        {% for issue in result.validation_issues %}
-                                        <div class="issue-item-wide">
-                                            <span class="issue-icon">!</span>
-                                            <span class="issue-text">{{ issue }}</span>
-                                        </div>
-                                        {% endfor %}
-                                    </div>
-                                </div>
-                                {% endif %}
-                                
-                                {% if result.document_classification %}
-                                <div class="validation-section">
-                                    <h5 class="section-title">Classification Confidence</h5>
-                                    <div class="confidence-info-wide">
-                                        <div class="confidence-bar-wide">
-                                            <div class="confidence-progress" style="width: {{ ((result.document_classification.confidence or 0) * 100)|round }}%"></div>
-                                        </div>
-                                        <div class="confidence-details">
-                                            <span class="confidence-value">{{ ((result.document_classification.confidence or 0) * 100)|round }}%</span>
-                                            <span class="confidence-status {{ 'pass' if (result.document_classification.confidence or 0) >= 0.7 else 'fail' }}">
-                                                {{ "✓ Pass" if (result.document_classification.confidence or 0) >= 0.7 else "✗ Fail" }} (Required: ≥70%)
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
-                                {% endif %}
-
-                            </div>
-                        </div>
-                    </div>
-                    {% endif %}
                 </div>
             </div>
+            {% endif %}
+
+            <!-- Data Validation Card -->
+            {% if result.validation_issues is defined %}
+            <div class="analysis-card-wide validation-card">
+                <div class="card-header-wide">
+                    <div class="header-left">
+                        <h4 class="card-title-wide">✅ Data Validation</h4>
+                        <span class="ai-badge">Rule Engine</span>
+                    </div>
+                    <div class="header-right">
+                        {% if result.validation_issues|length > 0 %}
+                        <span class="validation-status-badge failed">{{ result.validation_issues|length }} issues found</span>
+                        {% else %}
+                        <span class="validation-status-badge passed">All checks passed</span>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="card-content-wide">
+                    <!-- Validation Status Section -->
+                    <div class="validation-overview">
+                        {% if result.validation_issues|length > 0 %}
+                        <div class="validation-status-wide failed">
+                            <div class="status-icon-large">⚠</div>
+                            <div class="status-content">
+                                <div class="status-title">Validation Issues Detected</div>
+                                <div class="status-subtitle">{{ result.validation_issues|length }} issues require attention</div>
+                            </div>
+                        </div>
+                        {% else %}
+                        <div class="validation-status-wide passed">
+                            <div class="status-icon-large">✓</div>
+                            <div class="status-content">
+                                <div class="status-title">Validation Successful</div>
+                                <div class="status-subtitle">All validation checks passed successfully</div>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Detailed Validation Information -->
+                    <div class="validation-details-wide">
+                        {% if result.validation_issues|length > 0 %}
+                        <div class="validation-section">
+                            <h5 class="section-title">Issues Found</h5>
+                            <div class="issues-grid">
+                                {% for issue in result.validation_issues %}
+                                <div class="issue-item-wide">
+                                    <span class="issue-icon">!</span>
+                                    <span class="issue-text">{{ issue }}</span>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        {% if result.document_classification %}
+                        <div class="validation-section">
+                            <h5 class="section-title">Classification Confidence</h5>
+                            <div class="confidence-info-wide">
+                                <div class="confidence-bar-wide">
+                                    <div class="confidence-progress" style="width: {{ ((result.document_classification.confidence or 0) * 100)|round }}%"></div>
+                                </div>
+                                <div class="confidence-details">
+                                    <span class="confidence-value">{{ ((result.document_classification.confidence or 0) * 100)|round }}%</span>
+                                    <span class="confidence-status {{ 'pass' if (result.document_classification.confidence or 0) >= 0.7 else 'fail' }}">
+                                        {{ "✓ Pass" if (result.document_classification.confidence or 0) >= 0.7 else "✗ Fail" }} (Required: ≥70%)
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                    </div>
+                </div>
+            </div>
+            {% endif %}
 
 
             <!-- Original OCR Text -->
