@@ -79,21 +79,21 @@ class MistralOnlyOCREngine:
             raise ValueError(f"Error encoding image: {str(e)}")
     
     def _encode_image_to_base64_for_ocr(self, image_path: str) -> str:
-        """Encode image to base64 string for Mistral OCR API following official documentation"""
+        """Encode image to base64 string for Mistral OCR API - API expects application/ MIME type for all documents"""
         try:
-            # Follow Mistral documentation format exactly
+            # Based on API error, OCR API expects data:application/ format for all documents including images
             with open(image_path, "rb") as image_file:
                 image_data = base64.b64encode(image_file.read()).decode('utf-8')
                 
-                # Determine format based on file extension
+                # Use application MIME type as required by OCR API error message
                 file_extension = image_path.lower().split('.')[-1]
                 if file_extension in ['jpg', 'jpeg']:
-                    return f"data:image/jpeg;base64,{image_data}"
+                    return f"data:application/jpeg;base64,{image_data}"
                 elif file_extension == 'png':
-                    return f"data:image/png;base64,{image_data}"
+                    return f"data:application/png;base64,{image_data}"
                 else:
-                    # Default to PNG for other image formats
-                    return f"data:image/png;base64,{image_data}"
+                    # Default to application/png for other image formats
+                    return f"data:application/png;base64,{image_data}"
                 
         except Exception as e:
             raise ValueError(f"Error encoding image for OCR: {str(e)}")
