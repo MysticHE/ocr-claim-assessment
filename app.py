@@ -1,5 +1,7 @@
 import os
 import uuid
+import json
+import numpy as np
 from flask import Flask, request, render_template, jsonify, redirect, url_for, flash
 from werkzeug.utils import secure_filename
 from werkzeug.exceptions import RequestEntityTooLarge
@@ -18,6 +20,23 @@ app.config.from_object(Config)
 
 # Create upload folder
 Config.create_upload_folder()
+
+def make_json_serializable(obj):
+    """Convert numpy types to native Python types for JSON serialization"""
+    if isinstance(obj, np.bool_):
+        return bool(obj)
+    elif isinstance(obj, np.integer):
+        return int(obj)
+    elif isinstance(obj, np.floating):
+        return float(obj)
+    elif isinstance(obj, np.ndarray):
+        return obj.tolist()
+    elif isinstance(obj, dict):
+        return {key: make_json_serializable(value) for key, value in obj.items()}
+    elif isinstance(obj, list):
+        return [make_json_serializable(item) for item in obj]
+    else:
+        return obj
 
 # Print startup information
 print("🚀 Starting Enhanced OCR Claim Processing System...")
@@ -255,8 +274,12 @@ def upload_file():
         # Calculate processing time
         processing_time = int((time.time() - start_time) * 1000)
         
-        # Prepare enhanced results for database storage
+        # Prepare enhanced results for database storage with JSON serialization
         enhanced_results = claim_decision if claim_decision.get('success', False) else None
+        
+        # Make all data JSON serializable to avoid numpy bool_ errors
+        if enhanced_results:
+            enhanced_results = make_json_serializable(enhanced_results)
         
         print(f"Storing enhanced results for claim {claim_id}:")
         print(f"   Enhanced results available: {enhanced_results is not None}")
@@ -272,7 +295,7 @@ def upload_file():
                 'language_detected': ocr_results.get('detected_language', ''),
                 'processing_time_ms': processing_time,
                 'claim_amount': claim_decision.get('amount', 0),
-                'decision_reasons': claim_decision.get('reasons', []),
+                'decision_reasons': make_json_serializable(claim_decision.get('reasons', [])),
                 'enhanced_results': enhanced_results
             }
         )

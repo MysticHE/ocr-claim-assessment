@@ -161,8 +161,6 @@ Translate any non-English content to English while preserving the document struc
             if file_extension == 'pdf':
                 # For PDFs: use document_url structure
                 document_base64 = self._encode_pdf_to_base64(file_path)
-                print(f"PDF encoded - length: {len(document_base64)}, prefix: {document_base64[:50]}...")
-                
                 document_config = {
                     "type": "document_url",
                     "document_url": document_base64
@@ -170,8 +168,6 @@ Translate any non-English content to English while preserving the document struc
             else:
                 # For images: use image_url structure as per official documentation
                 document_base64 = self._encode_image_to_base64_for_ocr(file_path)
-                print(f"Image encoded - length: {len(document_base64)}, prefix: {document_base64[:50]}...")
-                
                 document_config = {
                     "type": "image_url",
                     "image_url": document_base64
@@ -184,38 +180,13 @@ Translate any non-English content to English while preserving the document struc
                 include_image_base64=True
             )
             
-            # Extract text from OCR response with detailed debugging
+            # Extract text from OCR response
             extracted_text = ""
-            
-            # Debug: Print the entire response structure to understand what we're getting
-            print(f"DEBUG: OCR Response type: {type(response)}")
-            print(f"DEBUG: OCR Response attributes: {dir(response)}")
-            
-            if hasattr(response, 'pages') and response.pages:
-                print(f"DEBUG: Found {len(response.pages)} pages")
-                for i, page in enumerate(response.pages):
-                    print(f"DEBUG: Page {i} attributes: {dir(page)}")
-                    if hasattr(page, 'markdown'):
-                        print(f"DEBUG: Page {i} markdown: {page.markdown[:100]}...")
-                    if hasattr(page, 'text'):
-                        print(f"DEBUG: Page {i} text: {page.text[:100]}...")
-                
+            if response.pages:
                 # Combine text from all pages
                 extracted_text = "\n\n".join([
                     page.markdown for page in response.pages if hasattr(page, 'markdown') and page.markdown
                 ])
-            else:
-                print("DEBUG: No pages found in response")
-                # Check if there are other fields in the response
-                if hasattr(response, 'text'):
-                    extracted_text = response.text
-                    print(f"DEBUG: Found direct text field: {extracted_text[:100]}...")
-                elif hasattr(response, 'content'):
-                    extracted_text = response.content
-                    print(f"DEBUG: Found content field: {extracted_text[:100]}...")
-            
-            print(f"DEBUG: Final extracted text length: {len(extracted_text)}")
-            print(f"DEBUG: Final extracted text preview: {extracted_text[:200]}...")
             
             processing_time = (time.time() - start_time) * 1000
             
@@ -234,13 +205,6 @@ Translate any non-English content to English while preserving the document struc
             }
             
         except Exception as e:
-            # Add detailed error logging for debugging OCR API issues
-            error_details = {
-                'error_message': str(e),
-                'error_type': type(e).__name__,
-                'file_extension': file_path.lower().split('.')[-1] if file_path else 'unknown'
-            }
-            print(f"OCR API Error Details: {error_details}")
             return self._handle_extraction_error(e, languages, start_time)
     
     def _extract_from_image_with_ocr_focus(self, image_path: str, languages: List[str], start_time: float) -> Dict[str, Any]:
