@@ -170,8 +170,11 @@
   font-size: 0.875rem;
   font-weight: 500;
   color: #d1d5db;
-  text-align: center;
+  text-align: center !important;
   width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
 /* Enhanced Step Details - Center Aligned */
