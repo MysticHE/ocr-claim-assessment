@@ -80,15 +80,17 @@ Extract the following information and return as valid JSON only (no additional t
   }}
 }}
 
-Special Instructions for Hospital Bills and Tax Invoices:
+Special Instructions for Document Classification and Extraction:
+- Document types must be classified as: "claims", "receipt", "referral letter", or "memo" only
+- Tax invoices, hospital bills, medical certificates = "claims" 
+- Payment confirmations, paid receipts = "receipt"
+- Medical referrals, specialist appointments = "referral letter"
+- Internal notes, communications = "memo"
 - Patient names often appear in billing/payment sections (e.g., "AMOUNT DUE: TAN WENBIN", "PAYMENTS TAN WENBIN")
 - Look for ALL CAPS names in payment contexts and standalone on their own lines
-- Tax invoices from hospitals should be classified as "invoice" type
-- Names may appear multiple times - extract the most complete version
 - Singapore format: Look for patterns like "TAN WENBIN", "LEE MING HUA" (2-3 words, all caps)
-- Hospital billing amounts include various line items - extract the FINAL AMOUNT DUE or NET AMOUNT PAYABLE
-- For SGH bills: Look for "AMOUNT DUE :" followed by patient name and amount
-- Patient names often appear without labels - look for names on separate lines early in document
+- Extract ALL amounts found - no limits on claim amounts
+- For SGH bills: Look for "AMOUNT DUE :" followed by patient name and final amount
 
 Rules:
 - Return ONLY valid JSON, no markdown or explanations

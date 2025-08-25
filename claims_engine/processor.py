@@ -38,9 +38,7 @@ class ClaimProcessor:
         """Load business rules for claim processing"""
         # These rules would typically come from the Word document or a configuration file
         self.rules = {
-            'max_claim_amount': 10000.00,  # Maximum claim amount in SGD
-            'min_claim_amount': 1.00,      # Minimum claim amount
-            'auto_approve_threshold': 500.00,  # Auto-approve below this amount
+            # Remove all amount limits
             'auto_reject_reasons': [
                 'expired_policy',
                 'invalid_diagnosis',
@@ -260,7 +258,7 @@ class ClaimProcessor:
                     # Clean and convert amount
                     clean_amount = match.replace(',', '')
                     amount = float(clean_amount)
-                    if amount > 0 and amount <= self.rules['max_claim_amount']:
+                    if amount > 0:  # Remove amount limit
                         amounts.append(amount)
                 except ValueError:
                     continue
@@ -295,12 +293,7 @@ class ClaimProcessor:
             issues.append("Missing claim amount")
         
         # Validate amounts
-        amount_to_check = data.total_amount or (max(data.amounts) if data.amounts else 0)
-        if amount_to_check:
-            if amount_to_check < self.rules['min_claim_amount']:
-                issues.append(f"Claim amount too low (minimum: {self.rules['min_claim_amount']})")
-            elif amount_to_check > self.rules['max_claim_amount']:
-                issues.append(f"Claim amount too high (maximum: {self.rules['max_claim_amount']})")
+        # Remove all amount validation - no limits
         
         # Validate dates
         current_date = datetime.now()
@@ -385,60 +378,27 @@ class ClaimProcessor:
                 processing_notes="Claim requires manual review due to suspicious patterns"
             )
         
-        # Check amount thresholds
+        # Decision based purely on confidence - no amount limits
         claim_amount = data.total_amount or (max(data.amounts) if data.amounts else 0)
         
-        if claim_amount <= self.rules['auto_approve_threshold']:
-            # Auto-approve small claims with high confidence
-            if base_confidence >= 0.8:
-                reasons.append(f"Small claim auto-approved (≤ {self.rules['auto_approve_threshold']})")
-                return ClaimDecision(
-                    status=ClaimStatus.APPROVED,
-                    confidence=base_confidence,
-                    amount=claim_amount,
-                    reasons=reasons,
-                    processing_notes="Auto-approved based on amount and confidence"
-                )
-            else:
-                reasons.append("Low confidence on small claim")
-                return ClaimDecision(
-                    status=ClaimStatus.REVIEW,
-                    confidence=base_confidence,
-                    amount=claim_amount,
-                    reasons=reasons,
-                    processing_notes="Manual review required due to low confidence"
-                )
-        
-        # Medium amounts - require higher confidence
-        elif claim_amount <= self.rules['max_claim_amount']:
-            if base_confidence >= 0.9:
-                reasons.append("High confidence claim approved")
-                return ClaimDecision(
-                    status=ClaimStatus.APPROVED,
-                    confidence=base_confidence,
-                    amount=claim_amount,
-                    reasons=reasons,
-                    processing_notes="Approved based on high confidence and valid amount"
-                )
-            else:
-                reasons.append("Medium amount requires manual review")
-                return ClaimDecision(
-                    status=ClaimStatus.REVIEW,
-                    confidence=base_confidence,
-                    amount=claim_amount,
-                    reasons=reasons,
-                    processing_notes="Manual review required for medium amount claim"
-                )
-        
-        # Large amounts - always require review
+        # Auto-approve based on high confidence only
+        if base_confidence >= 0.8:
+            reasons.append("Claim auto-approved based on high confidence")
+            return ClaimDecision(
+                status=ClaimStatus.APPROVED,
+                confidence=base_confidence,
+                amount=claim_amount,
+                reasons=reasons,
+                processing_notes="Auto-approved based on confidence score"
+            )
         else:
-            reasons.append("High value claim requires manual review")
+            reasons.append("Manual review required due to lower confidence")
             return ClaimDecision(
                 status=ClaimStatus.REVIEW,
                 confidence=base_confidence,
                 amount=claim_amount,
                 reasons=reasons,
-                processing_notes="Manual review required for high value claim"
+                processing_notes="Manual review required due to confidence below threshold"
             )
     
     def process_claim(self, ocr_result: Dict[str, Any]) -> Dict[str, Any]:

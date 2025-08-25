@@ -122,9 +122,7 @@ class EnhancedClaimProcessor:
     def load_business_rules(self):
         """Load enhanced business rules"""
         self.rules = {
-            'max_claim_amount': 10000.00,
-            'min_claim_amount': 1.00,
-            'auto_approve_threshold': 500.00,
+            # Remove all amount limits and thresholds
             'quality_threshold': 0.6,  # Minimum quality score
             'classification_confidence_threshold': 0.7,
             'fraud_detection_enabled': True,
@@ -949,40 +947,37 @@ class EnhancedClaimProcessor:
                 processing_notes="Manual review required due to unclear document type"
             )
         
-        # Enhanced approval logic
+        # Simplified approval logic - no amount limits
         claim_amount = data.total_amount or 0
         
-        if claim_amount <= self.rules['auto_approve_threshold']:
-            if base_confidence >= 0.8:
-                reasons.append(f"Small claim auto-approved with high AI confidence")
-                return ClaimDecision(
-                    status=ClaimStatus.APPROVED,
-                    confidence=base_confidence,
-                    amount=claim_amount,
-                    reasons=reasons,
-                    processing_notes="Auto-approved by enhanced AI processing"
-                )
+        # Approve based on AI confidence only (no amount restrictions)
+        if base_confidence >= 0.9:
+            reasons.append("High confidence claim approved by AI analysis")
+            return ClaimDecision(
+                status=ClaimStatus.APPROVED,
+                confidence=base_confidence,
+                amount=claim_amount,
+                reasons=reasons,
+                processing_notes="Approved based on comprehensive AI analysis"
+            )
+        elif base_confidence >= 0.8:
+            reasons.append("Good confidence claim approved by AI analysis")
+            return ClaimDecision(
+                status=ClaimStatus.APPROVED,
+                confidence=base_confidence,
+                amount=claim_amount,
+                reasons=reasons,
+                processing_notes="Auto-approved by enhanced AI processing"
+            )
         
-        # Medium amounts with high confidence
-        elif claim_amount <= self.rules['max_claim_amount']:
-            if base_confidence >= 0.9:
-                reasons.append("High confidence claim approved by AI analysis")
-                return ClaimDecision(
-                    status=ClaimStatus.APPROVED,
-                    confidence=base_confidence,
-                    amount=claim_amount,
-                    reasons=reasons,
-                    processing_notes="Approved based on comprehensive AI analysis"
-                )
-        
-        # Default to review for safety
+        # Lower confidence goes to review
         reasons.append("Enhanced processing suggests manual review")
         return ClaimDecision(
             status=ClaimStatus.REVIEW,
             confidence=base_confidence,
             amount=claim_amount,
             reasons=reasons,
-            processing_notes="Manual review recommended by enhanced AI processing"
+            processing_notes="Manual review recommended due to lower AI confidence"
         )
     
     def _calculate_data_completeness_score(self, data: EnhancedClaimData) -> float:
@@ -1214,7 +1209,7 @@ class EnhancedClaimProcessor:
                 try:
                     clean_amount = match.replace(',', '')
                     amount = float(clean_amount)
-                    if amount > 0 and amount <= self.rules['max_claim_amount']:
+                    if amount > 0:  # Remove max amount limit
                         amounts.append(amount)
                 except ValueError:
                     continue
@@ -1234,38 +1229,35 @@ class EnhancedClaimProcessor:
         return 'SGD'
     
     def _simple_document_classification(self, text: str) -> str:
-        """Simple text-based document classification fallback"""
+        """Simple text-based document classification - returns only: claims, receipt, referral letter, or memo"""
         if not text:
-            return "unknown"
+            return "claims"  # Default to claims instead of unknown
             
         text_lower = text.lower()
         
-        # Enhanced keyword-based classification with priority order
-        # Tax invoices and hospital bills first
-        if any(keyword in text_lower for keyword in ['tax invoice', 'tax bill']):
-            return "invoice"
-        elif any(keyword in text_lower for keyword in ['hospital', 'medical bill', 'billing date', 'amount payable']):
-            return "invoice"
-        elif any(keyword in text_lower for keyword in ['receipt', 'paid', 'cash', 'card', 'total amount paid']):
+        # Classification with priority order: claims, receipt, referral letter, memo
+        
+        # Claims - prioritize medical bills, invoices, and hospital documents
+        if any(keyword in text_lower for keyword in [
+            'tax invoice', 'invoice', 'bill', 'hospital', 'medical certificate', 'prescription',
+            'amount due', 'total:', 'singapore general hospital', 'sgh', 'clinic',
+            'consultation fee', 'medication', 'treatment', 'diagnosis'
+        ]):
+            return "claims"
+        
+        # Receipt - documents showing payment was made
+        elif any(keyword in text_lower for keyword in ['receipt', 'paid', 'payment received', 'cash', 'card payment', 'transaction', 'total amount paid']):
             return "receipt"
-        elif any(keyword in text_lower for keyword in ['invoice', 'bill to', 'amount due', 'billing', 'payable']):
-            return "invoice"
-        elif any(keyword in text_lower for keyword in ['referral', 'refer to', 'specialist', 'consultation']):
-            return "referral_letter"
-        elif any(keyword in text_lower for keyword in ['prescription', 'medication', 'dosage', 'rx', 'pharmacy']):
-            return "prescription"
-        elif any(keyword in text_lower for keyword in ['medical certificate', 'mc', 'fitness', 'sick leave']):
-            return "medical_certificate"
-        elif any(keyword in text_lower for keyword in ['lab report', 'test results', 'diagnosis', 'laboratory']):
-            return "diagnostic_report"
-        elif any(keyword in text_lower for keyword in ['memo', 'memorandum', 'note to']):
+        
+        # Referral Letter - medical referrals (must not be bills/invoices)
+        elif any(keyword in text_lower for keyword in ['referral', 'refer to', 'specialist appointment', 'medical referral']) and \
+             not any(keyword in text_lower for keyword in ['invoice', 'bill', 'amount due', 'total:', 'fee']):
+            return "referral letter"
+        
+        # Memo - memorandums, notes, internal communications
+        elif any(keyword in text_lower for keyword in ['memo', 'memorandum', 'note to', 'internal note', 'communication']):
             return "memo"
-        elif any(keyword in text_lower for keyword in ['insurance claim', 'policy', 'coverage', 'claim form']):
-            return "insurance_form"
-        elif any(keyword in text_lower for keyword in ['identity card', 'nric', 'passport', 'identification']):
-            return "identity_document"
-        # Catch medical/hospital contexts even if specific type unclear
-        elif any(keyword in text_lower for keyword in ['doctor', 'clinic', 'hospital', 'medical', 'patient']):
-            return "medical_certificate"
+        
+        # Default to claims for everything else (medical documents, etc.)
         else:
-            return "unknown"
+            return "claims"
