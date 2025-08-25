@@ -4,7 +4,7 @@ import hashlib
 import time
 import os
 from typing import Dict, List, Any, Optional, Tuple
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from dataclasses import dataclass, asdict
 
 from database.models import ClaimStatus, ClaimDecision
@@ -774,8 +774,22 @@ class EnhancedClaimProcessor:
             duplicates_found = []
             
             # 1. Exact hash matching using existing claims table
-            claim_key = f"{data.patient_name}|{data.total_amount}|{data.treatment_dates}|{data.provider_name}"
+            # Use robust fields that are more likely to be consistent
+            primary_key = f"{data.patient_name}|{data.total_amount}|{data.patient_id}|{data.claim_number}"
+            claim_key = f"{data.patient_name}|{data.total_amount}|{data.treatment_dates}|{data.provider_name or 'unknown'}"
+            
+            # Create multiple hashes for different matching strategies
+            primary_hash = hashlib.md5(primary_key.encode()).hexdigest()
             claim_hash = hashlib.md5(claim_key.encode()).hexdigest()
+            
+            # Debug logging for duplicate detection
+            print(f"DUPLICATE CHECK:")
+            print(f"   Patient: {data.patient_name}")
+            print(f"   Amount: {data.total_amount}")
+            print(f"   Patient ID: {data.patient_id}")
+            print(f"   Claim Number: {data.claim_number}")
+            print(f"   Primary Hash: {primary_hash}")
+            print(f"   Claim Hash: {claim_hash}")
             
             # Search for duplicates with minimal logging
             if data.patient_name:
@@ -802,6 +816,8 @@ class EnhancedClaimProcessor:
                 }
             else:
                 print("No duplicates found in database")
+                # Store claim data for future duplicate comparisons
+                self._store_claim_for_comparison(db_client, data, claim_hash, primary_hash)
             
             return None
             
@@ -837,7 +853,9 @@ class EnhancedClaimProcessor:
                     similarity_score = self._calculate_text_similarity_from_claims(data, claim)
                     
                     if similarity_score > 0.8:  # High similarity threshold
-                        days_ago = (datetime.now() - datetime.fromisoformat(claim['created_at'].replace('Z', '+00:00'))).days
+                        claim_date = datetime.fromisoformat(claim['created_at'].replace('Z', '+00:00'))
+                        now_utc = datetime.now(timezone.utc)
+                        days_ago = (now_utc - claim_date).days
                         
                         # Extract patient name from metadata if available
                         patient_from_db = "Unknown"
@@ -887,7 +905,8 @@ class EnhancedClaimProcessor:
                 for claim in query_result.data:
                     # Calculate date similarity based on submission date
                     claim_date = datetime.fromisoformat(claim['created_at'].replace('Z', '+00:00'))
-                    date_diff = abs((datetime.now() - claim_date).days)
+                    now_utc = datetime.now(timezone.utc)
+                    date_diff = abs((now_utc - claim_date).days)
                     
                     if date_diff <= 30:  # Within 30 days
                         amount_similarity = 1 - abs(data.total_amount - float(claim['claim_amount'])) / data.total_amount
@@ -1004,13 +1023,16 @@ class EnhancedClaimProcessor:
         
         return distances[-1]
     
-    def _store_claim_for_comparison(self, db_client, data: EnhancedClaimData, claim_hash: str):
+    def _store_claim_for_comparison(self, db_client, data: EnhancedClaimData, claim_hash: str, primary_hash: str = None):
         """Store claim data for future duplicate comparisons"""
         try:
             # Store in duplicate tracking table (would need to create this table)
             duplicate_data = {
                 'claim_hash': claim_hash,
+                'primary_hash': primary_hash or claim_hash,
                 'patient_name': data.patient_name,
+                'patient_id': data.patient_id,
+                'claim_number': data.claim_number,
                 'claim_amount': data.total_amount,
                 'provider_name': data.provider_name,
                 'treatment_dates': str(data.treatment_dates),
@@ -1036,27 +1058,36 @@ class EnhancedClaimProcessor:
     def _fallback_duplicate_check(self, data: EnhancedClaimData) -> Optional[Dict]:
         """Fallback to simple hash-based duplicate detection"""
         try:
-            claim_key = f"{data.patient_name}|{data.total_amount}|{data.treatment_dates}|{data.provider_name}"
+            # Use primary key for more reliable duplicate detection
+            primary_key = f"{data.patient_name}|{data.total_amount}|{data.patient_id}|{data.claim_number}"
+            claim_key = f"{data.patient_name}|{data.total_amount}|{data.treatment_dates}|{data.provider_name or 'unknown'}"
+            
+            primary_hash = hashlib.md5(primary_key.encode()).hexdigest()
             claim_hash = hashlib.md5(claim_key.encode()).hexdigest()
             
-            if claim_hash in self.processed_claims_cache:
-                stored_claim = self.processed_claims_cache[claim_hash]
-                time_diff = datetime.now() - stored_claim['timestamp']
-                
-                if time_diff.days < 30:
-                    return {
-                        'type': 'duplicate_detected',
-                        'similarity_score': 1.0,
-                        'match_type': 'exact_hash',
-                        'days_ago': time_diff.days,
-                        'details': f"Exact duplicate detected (submitted {time_diff.days} days ago)"
-                    }
-            else:
-                self.processed_claims_cache[claim_hash] = {
-                    'timestamp': datetime.now(),
-                    'patient': data.patient_name,
-                    'amount': data.total_amount
-                }
+            # Check both primary hash (more reliable) and claim hash
+            for hash_key, hash_type in [(primary_hash, 'primary_key'), (claim_hash, 'claim_key')]:
+                if hash_key in self.processed_claims_cache:
+                    stored_claim = self.processed_claims_cache[hash_key]
+                    time_diff = datetime.now() - stored_claim['timestamp']
+                    
+                    if time_diff.days < 30:
+                        return {
+                            'type': 'duplicate_detected',
+                            'similarity_score': 1.0,
+                            'match_type': f'exact_hash_{hash_type}',
+                            'days_ago': time_diff.days,
+                            'details': f"Exact duplicate detected via {hash_type} (submitted {time_diff.days} days ago)"
+                        }
+            
+            # Store both hashes for future comparison
+            claim_data = {
+                'timestamp': datetime.now(),
+                'patient': data.patient_name,
+                'amount': data.total_amount
+            }
+            self.processed_claims_cache[primary_hash] = claim_data
+            self.processed_claims_cache[claim_hash] = claim_data
             
             return None
         except Exception:
