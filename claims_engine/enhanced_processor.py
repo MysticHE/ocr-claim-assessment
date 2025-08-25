@@ -605,6 +605,12 @@ class EnhancedClaimProcessor:
         if 'quality_score' not in extracted.ai_confidence_scores:
             extracted.ai_confidence_scores['quality_score'] = quality_result.quality_score.overall_score if quality_result else 0.5
         
+        # Post-processing: Fill missing visit_dates with document_date or treatment_dates
+        if not extracted.visit_dates and extracted.document_date:
+            extracted.visit_dates = [extracted.document_date]
+        elif not extracted.visit_dates and extracted.treatment_dates:
+            extracted.visit_dates = extracted.treatment_dates[:1]  # Use first treatment date
+        
         # Set processing stage
         extracted.processing_stage = "data_extracted"
         
@@ -1302,19 +1308,45 @@ class EnhancedClaimProcessor:
     def _extract_provider_name(self, text: str) -> Optional[str]:
         """Extract healthcare provider name from text"""
         patterns = [
+            # Medical facility patterns
             r'clinic\s*:?\s*([A-Za-z\s&,.-]+?)(?:\n|$|[0-9])',
             r'hospital\s*:?\s*([A-Za-z\s&,.-]+?)(?:\n|$|[0-9])',
+            r'medical\s*center\s*:?\s*([A-Za-z\s&,.-]+?)(?:\n|$|[0-9])',
+            r'healthcare\s*:?\s*([A-Za-z\s&,.-]+?)(?:\n|$|[0-9])',
+            
+            # Doctor/practitioner patterns
             r'doctor\s*:?\s*([A-Za-z\s,.-]+?)(?:\n|$|[0-9])',
+            r'dr\.?\s*([A-Za-z\s,.-]+?)(?:\n|$|[0-9])',
+            r'physician\s*:?\s*([A-Za-z\s,.-]+?)(?:\n|$|[0-9])',
+            
+            # General provider patterns
             r'provider\s*:?\s*([A-Za-z\s&,.-]+?)(?:\n|$|[0-9])',
+            r'practitioner\s*:?\s*([A-Za-z\s&,.-]+?)(?:\n|$|[0-9])',
+            
+            # Location-based patterns (common in Singapore)
+            r'pte\s*ltd\s*([A-Za-z\s&,.-]+?)(?:\n|$)',
+            r'([A-Za-z\s&,.-]+?)\s*pte\s*ltd',
+            r'([A-Za-z\s&,.-]+?)\s*clinic',
+            r'([A-Za-z\s&,.-]+?)\s*hospital',
+            r'([A-Za-z\s&,.-]+?)\s*medical',
+            
+            # Address-based extraction (if provider appears before address)
+            r'([A-Z][A-Za-z\s&,.-]+?)\s*(?:singapore|s\s*\d{6}|\d{6})',
         ]
         
         for pattern in patterns:
             match = re.search(pattern, text, re.IGNORECASE | re.MULTILINE)
             if match:
                 provider = match.group(1).strip()
+                # Clean up the provider name
                 provider = re.sub(r'[^A-Za-z\s&,.-]', '', provider)
-                if len(provider) > 3:
+                provider = re.sub(r'\s+', ' ', provider)  # Normalize whitespace
+                
+                # Filter out common false positives
+                false_positives = ['patient', 'claim', 'invoice', 'bill', 'receipt', 'total', 'amount']
+                if len(provider) > 3 and not any(fp in provider.lower() for fp in false_positives):
                     return provider.title()
+        
         return None
     
     def _extract_diagnosis_codes(self, text: str) -> List[str]:

@@ -446,6 +446,21 @@ def view_enhanced_results(claim_id):
                 if document_insights and 'readability_assessment' in document_insights:
                     return document_insights['readability_assessment']
             
+            # Smart readability assessment based on successful data extraction
+            # If we extracted key data fields successfully, document is likely readable
+            if extracted_data and isinstance(extracted_data, dict):
+                key_fields_extracted = 0
+                if extracted_data.get('patient_name'): key_fields_extracted += 1
+                if extracted_data.get('total_amount'): key_fields_extracted += 1
+                if extracted_data.get('patient_id'): key_fields_extracted += 1
+                if extracted_data.get('claim_number'): key_fields_extracted += 1
+                
+                # If we extracted 3+ key fields, document is readable regardless of quality score
+                if key_fields_extracted >= 3:
+                    return "readable"
+                elif key_fields_extracted >= 2:
+                    return "partially_readable"
+            
             # Fallback to quality assessment score
             if quality_data and isinstance(quality_data, dict):
                 quality_score = quality_data.get('quality_score', {})
