@@ -72,7 +72,7 @@ Extract the following information and return as valid JSON only (no additional t
   "document_date": "YYYY-MM-DD format document creation/submission date or null",
   "line_items": [
     {{
-      "description": "Service description",
+      "description": "Actual service name from document (e.g., 'Consultation Fee', 'Blood Test', 'X-Ray', 'Medication')",
       "amount": numeric_amount,
       "currency": "SGD|USD|MYR"
     }}
@@ -111,6 +111,15 @@ Date Extraction Guidelines:
 - visit_dates: Same as treatment_dates but specifically for appointments/consultations
 - document_date: When the document was created/issued (invoice date, admission date, etc.)
 - Look for patterns: "Date:", "Invoice Date:", "Visit Date:", "Admission:", "Service Date:"
+
+Line Items Extraction Guidelines:
+- Extract actual service names from the document text, not generic descriptions
+- Look for medical services: "Consultation Fee", "Blood Test", "X-Ray", "MRI Scan", "Medication", "Laboratory Test"
+- Look for hospital services: "Ward Charges", "Nursing Care", "Surgery", "Anesthesia", "Room Charges"
+- Look for itemized billing: Service names followed by amounts, prices in tables/lists
+- Match each description with its corresponding amount from the document
+- If service name is unclear, use the text that appears before the amount
+- Common patterns: "Service Name ... Amount", "Description: Amount", "Item - Price"
 
 Rules:
 - Return ONLY valid JSON, no markdown or explanations

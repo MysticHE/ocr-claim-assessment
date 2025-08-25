@@ -540,6 +540,11 @@ class EnhancedClaimProcessor:
             extracted.amounts = self._extract_amounts(text)
             extracted.total_amount = max(extracted.amounts) if extracted.amounts else None
             extracted.currency = self._extract_currency(text)
+            extracted.line_items = self._extract_line_items(text)
+            
+            # If no line items found, create them from amounts
+            if not extracted.line_items and extracted.amounts:
+                extracted.line_items = self._create_line_items_from_amounts(text, extracted.amounts, extracted.currency)
             
             # Set confidence scores for regex extraction
             extracted.ai_confidence_scores = {
@@ -1309,3 +1314,139 @@ class EnhancedClaimProcessor:
         else:
             # If no clear matches, default to claims for medical contexts
             return "claims"
+    
+    def _extract_line_items(self, text: str) -> List[Dict[str, Any]]:
+        """Extract line items with service descriptions and amounts from OCR text"""
+        if not text:
+            return []
+            
+        line_items = []
+        lines = text.split('\n')
+        
+        # Common medical service patterns
+        service_patterns = [
+            # Direct service patterns with amounts
+            r'([A-Za-z][^$]*?(?:fee|charge|cost|service|test|scan|consultation|medication|treatment|ward|room|nursing|laboratory|x-ray|mri|ct|blood|urine|injection|surgery|anesthesia))\s*[:\-]?\s*\$?(\d{1,3}(?:,\d{3})*(?:\.\d{2})?)',
+            # Table-like patterns
+            r'([A-Za-z][^$\d]*?)\s+\$?(\d{1,3}(?:,\d{3})*(?:\.\d{2})?)\s*$',
+            # Description followed by amount
+            r'^([A-Za-z][^$\d]*?)(?:\s*-\s*|\s+)\$?(\d{1,3}(?:,\d{3})*(?:\.\d{2})?)',
+        ]
+        
+        # Medical service keywords for better matching
+        medical_keywords = [
+            'consultation', 'fee', 'charge', 'test', 'scan', 'x-ray', 'mri', 'ct', 'blood', 'urine',
+            'medication', 'treatment', 'ward', 'room', 'nursing', 'laboratory', 'injection', 
+            'surgery', 'anesthesia', 'diagnostic', 'therapy', 'examination', 'procedure'
+        ]
+        
+        for line in lines:
+            line = line.strip()
+            if not line or len(line) < 10:  # Skip very short lines
+                continue
+                
+            # Try each pattern
+            for pattern in service_patterns:
+                matches = re.findall(pattern, line, re.IGNORECASE)
+                for match in matches:
+                    if len(match) == 2:
+                        description, amount_str = match
+                        description = description.strip()
+                        
+                        # Clean up description
+                        description = re.sub(r'[:\-]+$', '', description).strip()
+                        
+                        # Skip if description is too short or doesn't contain medical terms
+                        if len(description) < 3:
+                            continue
+                            
+                        # Check if description contains medical keywords
+                        has_medical_keyword = any(keyword in description.lower() for keyword in medical_keywords)
+                        
+                        # Parse amount
+                        try:
+                            amount = float(amount_str.replace(',', ''))
+                            if amount > 0 and (has_medical_keyword or len(description) > 8):
+                                # Capitalize first letter of each word
+                                description = ' '.join(word.capitalize() for word in description.split())
+                                
+                                line_items.append({
+                                    'description': description,
+                                    'amount': amount,
+                                    'currency': 'SGD'  # Default currency
+                                })
+                        except ValueError:
+                            continue
+        
+        # Remove duplicates and sort by amount descending
+        seen = set()
+        unique_items = []
+        for item in sorted(line_items, key=lambda x: x['amount'], reverse=True):
+            key = (item['description'].lower(), item['amount'])
+            if key not in seen:
+                seen.add(key)
+                unique_items.append(item)
+        
+        return unique_items[:10]  # Limit to 10 items
+    
+    def _create_line_items_from_amounts(self, text: str, amounts: List[float], currency: str) -> List[Dict[str, Any]]:
+        """Create line items from amounts by trying to find nearby service descriptions"""
+        if not amounts:
+            return []
+            
+        line_items = []
+        text_lines = text.split('\n')
+        
+        # Common medical services for fallback naming
+        common_services = [
+            'Consultation Fee', 'Medical Examination', 'Laboratory Test', 'Blood Test', 
+            'X-Ray', 'Medication', 'Treatment Fee', 'Service Charge', 'Ward Charges',
+            'Nursing Care', 'Diagnostic Test', 'Medical Procedure'
+        ]
+        
+        for i, amount in enumerate(amounts[:10]):  # Limit to 10 items
+            description = None
+            
+            # Try to find a description near this amount in the text
+            amount_str = f"{amount:.2f}".replace('.00', '')  # Remove .00 for matching
+            amount_patterns = [
+                str(int(amount)) if amount == int(amount) else str(amount),
+                f"{amount:,.2f}",
+                f"{amount:,.0f}" if amount == int(amount) else f"{amount:.2f}",
+                amount_str
+            ]
+            
+            # Search for lines containing this amount
+            for line in text_lines:
+                for pattern in amount_patterns:
+                    if pattern in line and len(line.strip()) > 10:
+                        # Extract potential service name from the line
+                        parts = line.split(pattern)
+                        if len(parts) > 1:
+                            potential_desc = parts[0].strip()
+                            # Clean up the description
+                            potential_desc = re.sub(r'^[:\-\s]+|[:\-\s]+$', '', potential_desc)
+                            potential_desc = re.sub(r'\s+', ' ', potential_desc)
+                            
+                            if len(potential_desc) > 3 and len(potential_desc) < 50:
+                                # Capitalize properly
+                                description = ' '.join(word.capitalize() for word in potential_desc.split())
+                                break
+                
+                if description:
+                    break
+            
+            # Fallback to common service names
+            if not description:
+                if i < len(common_services):
+                    description = common_services[i]
+                else:
+                    description = f"Medical Service {i + 1}"
+            
+            line_items.append({
+                'description': description,
+                'amount': amount,
+                'currency': currency or 'SGD'
+            })
+        
+        return line_items
