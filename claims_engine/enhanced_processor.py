@@ -1118,7 +1118,29 @@ class EnhancedClaimProcessor:
         
         reasons = []
         
-        # Enhanced rejection logic
+        # PRIORITY 1: Fraud-based rejection (highest priority)
+        if fraud_findings:
+            # Check if any fraud finding indicates duplicate submission
+            duplicate_findings = [f for f in fraud_findings if 'DUPLICATE' in f.upper() or 'SIMILAR' in f.upper()]
+            if duplicate_findings:
+                return ClaimDecision(
+                    status=ClaimStatus.REJECTED,
+                    confidence=base_confidence * 0.9,  # High confidence in duplicate detection
+                    amount=data.total_amount or 0,
+                    reasons=duplicate_findings,
+                    processing_notes="Claim rejected due to duplicate submission detected"
+                )
+            else:
+                # Other fraud findings go to review
+                return ClaimDecision(
+                    status=ClaimStatus.REVIEW,
+                    confidence=base_confidence * 0.8,
+                    amount=data.total_amount or 0,
+                    reasons=fraud_findings,
+                    processing_notes="Claim requires manual review due to fraud indicators"
+                )
+        
+        # PRIORITY 2: Validation issues
         if validation_issues:
             return ClaimDecision(
                 status=ClaimStatus.REJECTED,
@@ -1128,7 +1150,7 @@ class EnhancedClaimProcessor:
                 processing_notes="Claim rejected due to validation failures in enhanced processing"
             )
         
-        # Quality-based rejection
+        # PRIORITY 3: Quality-based rejection
         if quality_result and not quality_result.is_acceptable:
             return ClaimDecision(
                 status=ClaimStatus.REJECTED,
@@ -1138,15 +1160,7 @@ class EnhancedClaimProcessor:
                 processing_notes="Claim rejected due to poor document quality"
             )
         
-        # Fraud-based review
-        if fraud_findings:
-            return ClaimDecision(
-                status=ClaimStatus.REVIEW,
-                confidence=base_confidence * 0.8,
-                amount=data.total_amount or 0,
-                reasons=fraud_findings,
-                processing_notes="Claim flagged for manual review due to fraud indicators"
-            )
+        # Continue with approval/review logic
         
         # Document type specific logic
         if classification_result and classification_result.confidence < 0.5:

@@ -78,11 +78,6 @@
                             </div>
                             {% endif %}
                             
-                            <!-- Currency -->
-                            <div class="extracted-field-wide">
-                                <div class="field-label-wide">Currency</div>
-                                <div class="field-value-wide">{{ result.extracted_data.currency or 'SGD' }}</div>
-                            </div>
                             
                             <!-- Document Readability -->
                             <div class="extracted-field-wide">
@@ -140,19 +135,6 @@
                                 </div>
                             </div>
                             
-                            <!-- Visit Date -->
-                            <div class="extracted-field-wide">
-                                <div class="field-label-wide">Visit Date</div>
-                                <div class="field-value-wide">
-                                    {% if result.extracted_data.visit_dates and result.extracted_data.visit_dates|length > 0 %}
-                                        {{ result.extracted_data.visit_dates[0] }}
-                                    {% elif result.extracted_data.treatment_dates and result.extracted_data.treatment_dates|length > 0 %}
-                                        {{ result.extracted_data.treatment_dates[0] }}
-                                    {% else %}
-                                        Not Available
-                                    {% endif %}
-                                </div>
-                            </div>
                             
                             <!-- Provider Name -->
                             {% if result.extracted_data.provider_name or result.extracted_data.doctor or result.extracted_data.clinic %}
@@ -270,7 +252,7 @@
                 <div class="card-content-wide">
                     <div class="extracted-data-grid-wide">
                         {% for key, value in result.extracted_data.items() %}
-                            {% if key|lower not in ['quality_issues', 'treatment_dates', 'processing_stage', 'quality_acceptable', 'ai_confidence_scores', 'document_quality_score', 'workflow_steps_completed', 'document_classification_confidence', 'amounts', 'line_items'] %}
+                            {% if key|lower not in ['quality_issues', 'treatment_dates', 'processing_stage', 'quality_acceptable', 'ai_confidence_scores', 'document_quality_score', 'workflow_steps_completed', 'document_classification_confidence', 'amounts', 'line_items', 'document_date', 'document_type'] %}
                             <div class="extracted-field-wide">
                                 <div class="field-label-wide">{{ key|replace('_', ' ')|title }}</div>
                                 <div class="field-value-wide">

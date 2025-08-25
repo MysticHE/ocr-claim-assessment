@@ -112,6 +112,15 @@ Date Extraction Guidelines:
 - document_date: When the document was created/issued (invoice date, admission date, etc.)
 - Look for patterns: "Date:", "Invoice Date:", "Visit Date:", "Admission:", "Service Date:"
 
+Provider Name Extraction Guidelines:
+- Look for hospital names: "Singapore General Hospital", "Mount Elizabeth Hospital", "Tan Tock Seng Hospital"
+- Look for clinic names: Often ends with "Clinic", "Medical Centre", "Healthcare"
+- Look for doctor names: "Dr. [Name]", "Doctor [Name]", often appears in headers/letterheads
+- Look for company names: "[Name] Pte Ltd", medical practices, healthcare organizations  
+- Check document headers, letterheads, billing addresses, and contact information
+- Common patterns: "Bill To:", "Provider:", "Clinic:", "Hospital:", "Medical Centre:"
+- Singapore medical providers often have "Pte Ltd" in their names
+
 Line Items Extraction Guidelines:
 - Extract actual service names from the document text, not generic descriptions
 - Look for medical services: "Consultation Fee", "Blood Test", "X-Ray", "MRI Scan", "Medication", "Laboratory Test"
