@@ -263,13 +263,69 @@
                 <div class="card-content-wide">
                     <div class="extracted-data-grid-wide">
                         {% for key, value in result.extracted_data.items() %}
-                            {% if key|lower not in ['quality_issues', 'treatment_dates', 'processing_stage', 'quality_acceptable', 'ai_confidence_scores', 'document_quality_score', 'workflow_steps_completed', 'document_classification_confidence'] %}
+                            {% if key|lower not in ['quality_issues', 'treatment_dates', 'processing_stage', 'quality_acceptable', 'ai_confidence_scores', 'document_quality_score', 'workflow_steps_completed', 'document_classification_confidence', 'amounts', 'line_items'] %}
                             <div class="extracted-field-wide">
                                 <div class="field-label-wide">{{ key|replace('_', ' ')|title }}</div>
-                                <div class="field-value-wide">{{ value }}</div>
+                                <div class="field-value-wide">
+                                    {% if value and value != [] and value != "" %}
+                                        {% if key|lower == 'total_amount' and value %}
+                                            ${{ "{:,.2f}".format(value) }}
+                                        {% elif key|lower in ['visit_dates', 'treatment_dates', 'diagnosis_codes'] and value %}
+                                            {% if value|length > 0 %}
+                                                {{ value|join(', ') }}
+                                            {% else %}
+                                                NA
+                                            {% endif %}
+                                        {% else %}
+                                            {{ value }}
+                                        {% endif %}
+                                    {% else %}
+                                        NA
+                                    {% endif %}
+                                </div>
                             </div>
                             {% endif %}
                         {% endfor %}
+                        
+                        <!-- Custom Line Items Display -->
+                        {% if result.extracted_data.line_items and result.extracted_data.line_items|length > 0 %}
+                        <div class="extracted-field-wide line-items-field">
+                            <div class="field-label-wide">Line Items</div>
+                            <div class="field-value-wide">
+                                <div class="line-items-container">
+                                    {% for item in result.extracted_data.line_items %}
+                                    <div class="line-item">
+                                        <div class="line-item-description">{{ item.description or 'Service' }}</div>
+                                        <div class="line-item-amount">
+                                            {% set currency = item.currency or result.extracted_data.currency or 'SGD' %}
+                                            {% if currency == 'SGD' %}${% elif currency == 'USD' %}${% elif currency == 'MYR' %}RM{% else %}{{ currency }} {% endif %}{{ "{:,.2f}".format(item.amount) if item.amount else 'N/A' }}
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                        {% elif result.extracted_data.amounts and result.extracted_data.amounts|length > 0 %}
+                        <!-- Fallback: Display amounts as line items -->
+                        <div class="extracted-field-wide line-items-field">
+                            <div class="field-label-wide">Line Items</div>
+                            <div class="field-value-wide">
+                                <div class="line-items-container">
+                                    {% for amount in result.extracted_data.amounts %}
+                                        {% if amount %}
+                                        <div class="line-item">
+                                            <div class="line-item-description">Service Item {{ loop.index }}</div>
+                                            <div class="line-item-amount">
+                                                {% set currency = result.extracted_data.currency or 'SGD' %}
+                                                {% if currency == 'SGD' %}${% elif currency == 'USD' %}${% elif currency == 'MYR' %}RM{% else %}{{ currency }} {% endif %}{{ "{:,.2f}".format(amount) }}
+                                            </div>
+                                        </div>
+                                        {% endif %}
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
                     </div>
                 </div>
             </div>

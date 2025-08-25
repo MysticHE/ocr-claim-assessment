@@ -60,6 +60,7 @@ OCR Text:
 Extract the following information and return as valid JSON only (no additional text):
 
 {{
+  "document_type": "claims|receipt|referral_letter|memo",
   "patient_name": "Full patient name or null",
   "patient_id": "Patient ID/NRIC/IC number or null", 
   "policy_number": "Insurance policy number or null",
@@ -69,6 +70,13 @@ Extract the following information and return as valid JSON only (no additional t
   "treatment_dates": ["YYYY-MM-DD format dates or empty array"],
   "visit_dates": ["YYYY-MM-DD format visit/appointment dates or empty array"],
   "document_date": "YYYY-MM-DD format document creation/submission date or null",
+  "line_items": [
+    {{
+      "description": "Service description",
+      "amount": numeric_amount,
+      "currency": "SGD|USD|MYR"
+    }}
+  ],
   "amounts": [list of numeric amounts found],
   "total_amount": numeric_total_or_null,
   "currency": "SGD|USD|MYR detected currency",

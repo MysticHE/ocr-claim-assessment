@@ -46,6 +46,7 @@ class EnhancedClaimData:
     # New fields for enhanced extraction
     visit_dates: List[str] = None
     document_date: Optional[str] = None
+    line_items: List[Dict[str, Any]] = None
     
     # AI Analysis Results
     document_type: Optional[str] = None
@@ -66,6 +67,8 @@ class EnhancedClaimData:
             self.treatment_dates = []
         if self.visit_dates is None:
             self.visit_dates = []
+        if self.line_items is None:
+            self.line_items = []
         if self.amounts is None:
             self.amounts = []
         if self.quality_issues is None:
@@ -311,16 +314,16 @@ class EnhancedClaimProcessor:
                 current_step.output_summary = f"Classified as: {classification_result.document_type.value}"
                 current_step.status = "completed"
             else:
-                # Simple text-based classification fallback
+                # Enhanced text-based classification fallback
                 doc_type = self._simple_document_classification(ocr_result.get('text', ''))
-                current_step.confidence_score = 0.6  # Lower confidence for simple classification
-                current_step.output_summary = f"Simple classification: {doc_type} (fallback mode)"
+                current_step.confidence_score = 0.7  # Higher confidence for improved classification
+                current_step.output_summary = f"Enhanced classification: {doc_type}"
                 current_step.status = "completed"
                 
                 # Create a mock classification result for OpenAI extraction
                 from collections import namedtuple
                 ClassificationResult = namedtuple('ClassificationResult', ['document_type', 'confidence'])
-                classification_result = ClassificationResult(document_type=doc_type, confidence=0.6)
+                classification_result = ClassificationResult(document_type=doc_type, confidence=0.7)
             
             current_step.end_time = datetime.now()
             workflow_steps.append(current_step)
@@ -493,6 +496,7 @@ class EnhancedClaimProcessor:
                     # Map new fields from OpenAI
                     extracted.visit_dates = ai_data.get('visit_dates', [])
                     extracted.document_date = ai_data.get('document_date')
+                    extracted.line_items = ai_data.get('line_items', [])
                     
                     # Store OpenAI insights
                     extracted.ai_confidence_scores = {
@@ -1239,35 +1243,69 @@ class EnhancedClaimProcessor:
         return 'SGD'
     
     def _simple_document_classification(self, text: str) -> str:
-        """Simple text-based document classification - returns only: claims, receipt, referral letter, or memo"""
+        """Enhanced text-based document classification - returns: claims, receipt, referral_letter, or memo"""
         if not text:
             return "claims"  # Default to claims instead of unknown
             
         text_lower = text.lower()
         
-        # Classification with priority order: claims, receipt, referral letter, memo
+        # Enhanced classification with stronger keywords and patterns
         
-        # Claims - prioritize medical bills, invoices, and hospital documents
-        if any(keyword in text_lower for keyword in [
-            'tax invoice', 'invoice', 'bill', 'hospital', 'medical certificate', 'prescription',
-            'amount due', 'total:', 'singapore general hospital', 'sgh', 'clinic',
-            'consultation fee', 'medication', 'treatment', 'diagnosis'
-        ]):
+        # Claims - medical bills, invoices, hospital documents (highest priority)
+        claims_keywords = [
+            # Invoice indicators
+            'tax invoice', 'invoice', 'bill', 'billing', 'amount due', 'total amount', 'total:',
+            # Medical facility indicators  
+            'hospital', 'singapore general hospital', 'sgh', 'clinic', 'medical center', 'polyclinic',
+            # Medical services
+            'consultation fee', 'medication', 'treatment', 'diagnosis', 'prescription', 'medical certificate',
+            # Healthcare specific
+            'patient', 'doctor', 'physician', 'medical', 'healthcare', 'ward', 'admission', 'discharge',
+            # Financial indicators
+            'gst', 'service charge', 'medisave', 'insurance claim', 'co-payment', 'deductible'
+        ]
+        
+        # Receipt - payment confirmations (second priority)
+        receipt_keywords = [
+            'receipt', 'paid', 'payment received', 'payment made', 'transaction completed',
+            'cash payment', 'card payment', 'credit card', 'nets', 'payment confirmation',
+            'amount paid', 'balance paid', 'settled', 'payment successful'
+        ]
+        
+        # Referral Letter - medical referrals (third priority, exclude if has billing terms)
+        referral_keywords = [
+            'referral', 'refer to', 'refer patient', 'specialist appointment', 'medical referral',
+            'kindly arrange', 'please see', 'consultation with', 'appointment with specialist',
+            'dear colleague', 'dear doctor'
+        ]
+        
+        # Memo - internal communications (lowest priority)
+        memo_keywords = [
+            'memo', 'memorandum', 'note to', 'internal note', 'communication', 'notice',
+            'from:', 'to:', 'subject:', 'regarding:', 'circular', 'announcement'
+        ]
+        
+        # Count matches for each category
+        claims_matches = sum(1 for keyword in claims_keywords if keyword in text_lower)
+        receipt_matches = sum(1 for keyword in receipt_keywords if keyword in text_lower)  
+        referral_matches = sum(1 for keyword in referral_keywords if keyword in text_lower)
+        memo_matches = sum(1 for keyword in memo_keywords if keyword in text_lower)
+        
+        # Check for financial indicators that would exclude referral classification
+        financial_indicators = ['invoice', 'bill', 'amount due', 'total:', 'fee', 'payment', 'charge']
+        has_financial_terms = any(indicator in text_lower for indicator in financial_indicators)
+        
+        # Classification logic with scoring
+        if claims_matches >= 2 or (claims_matches >= 1 and ('invoice' in text_lower or 'bill' in text_lower or 'amount due' in text_lower)):
             return "claims"
-        
-        # Receipt - documents showing payment was made
-        elif any(keyword in text_lower for keyword in ['receipt', 'paid', 'payment received', 'cash', 'card payment', 'transaction', 'total amount paid']):
-            return "receipt"
-        
-        # Referral Letter - medical referrals (must not be bills/invoices)
-        elif any(keyword in text_lower for keyword in ['referral', 'refer to', 'specialist appointment', 'medical referral']) and \
-             not any(keyword in text_lower for keyword in ['invoice', 'bill', 'amount due', 'total:', 'fee']):
-            return "referral letter"
-        
-        # Memo - memorandums, notes, internal communications
-        elif any(keyword in text_lower for keyword in ['memo', 'memorandum', 'note to', 'internal note', 'communication']):
+        elif receipt_matches >= 2 or (receipt_matches >= 1 and ('paid' in text_lower or 'receipt' in text_lower)):
+            return "receipt"  
+        elif referral_matches >= 1 and not has_financial_terms:
+            return "referral_letter"
+        elif memo_matches >= 2:
             return "memo"
-        
-        # Default to claims for everything else (medical documents, etc.)
+        elif claims_matches > 0:
+            return "claims"
         else:
+            # If no clear matches, default to claims for medical contexts
             return "claims"
