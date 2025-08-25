@@ -67,6 +67,26 @@ if missing_optional:
 else:
     print("✅ All optional environment variables configured - full AI capabilities enabled")
 
+# Check duplicate detection capabilities
+if not missing_vars:  # If required env vars are set
+    print("🔍 Duplicate Detection Status:")
+    try:
+        test_db = SupabaseClient()
+        if test_db.test_connection():
+            print("   ✅ Database connected - Advanced duplicate detection enabled")
+            print("      - Fuzzy text matching (>80% similarity)")
+            print("      - Amount proximity matching (±10% within 30 days)")
+            print("      - Exact hash matching")
+        else:
+            print("   ⚠️  Database connection failed - Basic duplicate detection only")
+            print("      - In-memory cache matching (current session only)")
+    except Exception as e:
+        print(f"   ❌ Database error: {e}")
+        print("      - Fallback to basic duplicate detection")
+else:
+    print("🔍 Duplicate Detection: ❌ Disabled (missing database configuration)")
+    print("   Run 'python setup_database_env.py' to configure advanced duplicate detection")
+
 # Initialize services with proper error handling
 db = None
 ocr_engine = None

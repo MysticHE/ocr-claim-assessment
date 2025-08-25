@@ -412,6 +412,56 @@
   word-wrap: break-word;
 }
 
+/* Fraud Findings Display */
+.fraud-findings-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.fraud-finding-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  background: linear-gradient(135deg, #fef2f2 0%, #fef7f0 100%);
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+}
+
+.fraud-finding-item:hover {
+  border-color: #f87171;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.1);
+}
+
+.fraud-icon {
+  font-size: 1.1rem;
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+}
+
+.fraud-text {
+  flex: 1;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  color: #dc2626;
+  font-weight: 500;
+}
+
+.no-fraud-indicators {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  background: linear-gradient(135deg, #f0fdf4 0%, #f7fee7 100%);
+  border: 1px solid #bbf7d0;
+  border-radius: 8px;
+  color: #16a34a;
+  font-weight: 500;
+  font-size: 0.9rem;
+}
+
 /* Validation Overview */
 .validation-overview {
   margin-bottom: 1.5rem;

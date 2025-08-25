@@ -112,9 +112,16 @@
                                     {% if result.duplicate_detected %}
                                         Duplicate Detected ({{ ((result.duplicate_detected.similarity_score or 0) * 100)|round }}% similarity)
                                     {% elif result.fraud_findings and result.fraud_findings|length > 0 %}
-                                        {{ result.fraud_findings|length }} Suspicious Indicator(s) Found
+                                        <div class="fraud-findings-list">
+                                            {% for finding in result.fraud_findings %}
+                                            <div class="fraud-finding-item">
+                                                <span class="fraud-icon">⚠️</span>
+                                                <span class="fraud-text">{{ finding }}</span>
+                                            </div>
+                                            {% endfor %}
+                                        </div>
                                     {% else %}
-                                        No Duplicates Found
+                                        <span class="no-fraud-indicators">✅ No Fraud Indicators Detected</span>
                                     {% endif %}
                                 </div>
                             </div>

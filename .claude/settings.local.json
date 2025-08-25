@@ -16,12 +16,14 @@
       "Bash(find:*)",
       "Bash(grep:*)",
       "Bash(del test_ocr_fix.py)",
-      "WebFetch(domain:docs.mistral.ai)"
+      "WebFetch(domain:docs.mistral.ai)",
+      "Bash(del test_classification.py)"
     ],
     "deny": [],
     "ask": [],
     "additionalDirectories": [
-      "C:\\Users\\keyqu\\Downloads"
+      "C:\\Users\\keyqu\\Downloads",
+      "C:\\c\\Users\\keyqu"
     ]
   }
 }

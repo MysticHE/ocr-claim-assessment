@@ -399,7 +399,15 @@ class EnhancedClaimProcessor:
             
             fraud_findings = self.enhanced_fraud_detection(ocr_result, extracted_data)
             current_step.issues_found = fraud_findings
-            current_step.output_summary = f"Fraud check: {len(fraud_findings)} suspicious indicators"
+            
+            # Create detailed fraud summary instead of just count
+            if fraud_findings:
+                fraud_summary = f"Fraud detected: {', '.join(fraud_findings[:2])}"
+                if len(fraud_findings) > 2:
+                    fraud_summary += f" + {len(fraud_findings) - 2} more"
+            else:
+                fraud_summary = "No fraud indicators detected"
+            current_step.output_summary = fraud_summary
             current_step.status = "completed"
             current_step.end_time = datetime.now()
             workflow_steps.append(current_step)
@@ -646,74 +654,141 @@ class EnhancedClaimProcessor:
     
     def enhanced_fraud_detection(self, ocr_result: Dict[str, Any], 
                                data: EnhancedClaimData) -> List[str]:
-        """Enhanced fraud detection with multiple techniques"""
+        """Enhanced fraud detection with detailed, user-friendly reasons"""
         suspicious_findings = []
         
-        # Existing pattern-based detection
+        print("Running comprehensive fraud detection analysis...")
+        
+        # 1. Pattern-based text detection
         text = ocr_result.get('text', '').lower()
+        pattern_findings = []
         for pattern in self.rules['suspicious_patterns']:
             if re.search(pattern, text, re.IGNORECASE):
-                suspicious_findings.append(f"Suspicious pattern detected: {pattern}")
+                # Convert regex patterns to user-friendly descriptions
+                if 'fraud|fake|false' in pattern:
+                    pattern_findings.append("Document contains suspicious keywords (fraud, fake, false)")
+                elif 'duplicate|copy|photocopy' in pattern:
+                    pattern_findings.append("Document contains duplication keywords (copy, duplicate, photocopy)")
+                elif 'altered|modified|changed' in pattern:
+                    pattern_findings.append("Document contains alteration keywords (altered, modified, changed)")
+                else:
+                    pattern_findings.append(f"Suspicious text pattern detected: {pattern}")
         
-        # Duplicate claim detection
+        if pattern_findings:
+            print(f"   Text analysis: Found {len(pattern_findings)} suspicious patterns")
+            suspicious_findings.extend(pattern_findings)
+        
+        # 2. Database duplicate detection
         if self.rules['duplicate_check_enabled']:
             duplicate_result = self._check_duplicate_claim(data)
             if duplicate_result:
-                suspicious_findings.append(f"Duplicate: {duplicate_result['details']} (Similarity: {duplicate_result['similarity_score']:.1%})")
+                duplicate_reason = f"DUPLICATE SUBMISSION: {duplicate_result['details']} ({duplicate_result['similarity_score']:.1%} match)"
+                suspicious_findings.append(duplicate_reason)
+                print(f"   DUPLICATE detected: {duplicate_result['match_type']} with {duplicate_result['similarity_score']:.1%} similarity")
+            else:
+                print("   No duplicates found in database")
         
-        # Quality-based fraud indicators
+        # 3. Document quality-based fraud indicators
+        quality_issues_found = []
         if data.quality_issues:
-            quality_fraud_indicators = [
-                'overexposed', 'underexposed', 'compression_artifacts', 
-                'partial_visibility', 'skewed'
-            ]
+            quality_fraud_mapping = {
+                'compression_artifacts': 'IMAGE QUALITY: Document has compression artifacts that may indicate digital manipulation',
+                'overexposed': 'IMAGE QUALITY: Document is overexposed which may indicate photo editing',
+                'underexposed': 'IMAGE QUALITY: Document is underexposed which may indicate poor scanning conditions',
+                'partial_visibility': 'IMAGE QUALITY: Parts of the document are not visible, potential tampering',
+                'skewed': 'IMAGE QUALITY: Document appears skewed or rotated unusually',
+                'low_resolution': 'IMAGE QUALITY: Document resolution is too low for proper verification',
+                'blurry': 'IMAGE QUALITY: Document is blurry which may indicate motion or tampering',
+                'incomplete_scan': 'IMAGE QUALITY: Document scan appears incomplete'
+            }
             
             for issue in data.quality_issues:
-                if issue in quality_fraud_indicators:
-                    suspicious_findings.append(f"Potential document tampering: {issue}")
+                if issue in quality_fraud_mapping:
+                    quality_issues_found.append(quality_fraud_mapping[issue])
+                    print(f"   Quality issue flagged: {issue}")
         
-        # Amount-based anomaly detection
+        suspicious_findings.extend(quality_issues_found)
+        
+        # 4. Amount-based anomaly detection
+        amount_anomalies = []
         if data.total_amount:
             if data.total_amount == int(data.total_amount) and data.total_amount > 100:
-                suspicious_findings.append("Suspicious round amount for large claim")
+                amount_anomalies.append(f"AMOUNT PATTERN: Suspiciously round amount ${data.total_amount:,.0f} for large claim")
+                print(f"   Amount anomaly: Round number ${data.total_amount:,.0f}")
+            
+            # Check for unusually high amounts (optional - you can adjust threshold)
+            if data.total_amount > 500000:
+                amount_anomalies.append(f"AMOUNT ALERT: Extremely high claim amount ${data.total_amount:,.2f} requires verification")
+                print(f"   High amount alert: ${data.total_amount:,.2f}")
         
-        # OCR confidence anomaly
+        suspicious_findings.extend(amount_anomalies)
+        
+        # 5. OCR confidence-based detection
         ocr_confidence = ocr_result.get('confidence', 1.0)
         if ocr_confidence < 0.5:
-            suspicious_findings.append(f"Very low OCR confidence may indicate document quality issues: {ocr_confidence:.2f}")
+            confidence_issue = f"OCR CONFIDENCE: Very low text recognition confidence ({ocr_confidence:.1%}) may indicate poor document quality or tampering"
+            suspicious_findings.append(confidence_issue)
+            print(f"   OCR confidence issue: {ocr_confidence:.1%}")
+        
+        # 6. Document type confidence check
+        if data.document_classification_confidence < 0.3:
+            classification_issue = f"CLASSIFICATION: Unable to determine document type with confidence ({data.document_classification_confidence:.1%})"
+            suspicious_findings.append(classification_issue)
+            print(f"   Classification issue: {data.document_classification_confidence:.1%}")
+        
+        # Summary logging
+        if suspicious_findings:
+            print(f"FRAUD ANALYSIS COMPLETE: {len(suspicious_findings)} issues detected")
+            for i, finding in enumerate(suspicious_findings, 1):
+                print(f"   {i}. {finding}")
+        else:
+            print("FRAUD ANALYSIS COMPLETE: No suspicious indicators detected")
         
         return suspicious_findings
     
     def _check_duplicate_claim(self, data: EnhancedClaimData) -> Optional[Dict[str, Any]]:
         """Enhanced duplicate detection with fuzzy matching and similarity scoring"""
         try:
-            # Store in database for persistent duplicate detection
+            # Enhanced database duplicate detection with better error handling
             from database.supabase_client import SupabaseClient
             
+            print("Starting database duplicate detection...")
             db_client = SupabaseClient()
+            
+            # Test database connection first
+            if not db_client.test_connection():
+                print("Database connection failed - falling back to in-memory checking")
+                return self._fallback_duplicate_check(data)
+            
+            print("Database connected - running advanced duplicate detection")
             
             # Calculate multiple similarity metrics
             duplicates_found = []
             
-            # 1. Exact hash matching (existing method)
+            # 1. Exact hash matching using existing claims table
             claim_key = f"{data.patient_name}|{data.total_amount}|{data.treatment_dates}|{data.provider_name}"
             claim_hash = hashlib.md5(claim_key.encode()).hexdigest()
             
-            # 2. Fuzzy text matching for patient names
+            print(f"   Generated claim hash: {claim_hash[:8]}...")
+            
+            # 2. Check existing claims table for similar records
             if data.patient_name:
+                print(f"   Searching for similar patient names to: {data.patient_name}")
                 similar_claims = self._find_similar_claims_by_text(db_client, data)
                 duplicates_found.extend(similar_claims)
+                print(f"   Found {len(similar_claims)} similar text matches")
             
             # 3. Amount and date proximity matching
-            proximity_matches = self._find_claims_by_proximity(db_client, data)
-            duplicates_found.extend(proximity_matches)
-            
-            # Store current claim for future comparisons
-            self._store_claim_for_comparison(db_client, data, claim_hash)
+            if data.total_amount:
+                print(f"   Searching for similar amounts to: ${data.total_amount}")
+                proximity_matches = self._find_claims_by_proximity(db_client, data)
+                duplicates_found.extend(proximity_matches)
+                print(f"   Found {len(proximity_matches)} proximity matches")
             
             if duplicates_found:
                 # Return the highest similarity match
                 best_match = max(duplicates_found, key=lambda x: x['similarity_score'])
+                print(f"DUPLICATE DETECTED! Best match: {best_match['similarity_score']:.1%} similarity")
                 
                 return {
                     'type': 'duplicate_detected',
@@ -724,68 +799,97 @@ class EnhancedClaimProcessor:
                     'details': best_match['details'],
                     'all_matches': duplicates_found[:3]  # Top 3 matches
                 }
+            else:
+                print("No duplicates found in database")
             
             return None
             
+        except ValueError as ve:
+            print(f"Database configuration error: {ve}")
+            print("Please set SUPABASE_URL and SUPABASE_SERVICE_KEY environment variables")
+            return self._fallback_duplicate_check(data)
+        except ConnectionError as ce:
+            print(f"Database connection error: {ce}")
+            return self._fallback_duplicate_check(data)
         except Exception as e:
-            # Fallback to in-memory cache
+            print(f"Unexpected error in duplicate detection: {e}")
+            print("Falling back to in-memory duplicate checking")
             return self._fallback_duplicate_check(data)
     
     def _find_similar_claims_by_text(self, db_client, data: EnhancedClaimData) -> List[Dict]:
-        """Find claims with similar text using fuzzy matching"""
+        """Find claims with similar text using fuzzy matching - works with existing claims table"""
         matches = []
         
         try:
-            # Get recent claims (last 90 days) for comparison
-            query_result = db_client.supabase.table('claims').select('*').gte(
+            # Get recent claims (last 90 days) for comparison using your existing table structure
+            query_result = db_client.supabase.table('claims').select(
+                'id, created_at, claim_amount, metadata, file_name'
+            ).gte(
                 'created_at', 
                 (datetime.now() - timedelta(days=90)).isoformat()
             ).execute()
             
+            print(f"      Checking {len(query_result.data) if query_result.data else 0} recent claims")
+            
             if query_result.data:
                 for claim in query_result.data:
-                    similarity_score = self._calculate_text_similarity(data, claim)
+                    similarity_score = self._calculate_text_similarity_from_claims(data, claim)
                     
                     if similarity_score > 0.8:  # High similarity threshold
                         days_ago = (datetime.now() - datetime.fromisoformat(claim['created_at'].replace('Z', '+00:00'))).days
+                        
+                        # Extract patient name from metadata if available
+                        patient_from_db = "Unknown"
+                        if claim.get('metadata') and isinstance(claim['metadata'], dict):
+                            extracted_data = claim['metadata'].get('enhanced_results', {}).get('extracted_data', {})
+                            patient_from_db = extracted_data.get('patient_name', 'Unknown')
                         
                         matches.append({
                             'similarity_score': similarity_score,
                             'match_type': 'fuzzy_text',
                             'days_ago': days_ago,
                             'claim_id': claim['id'],
-                            'details': f"Similar text content with {similarity_score:.1%} similarity"
+                            'details': f"Similar patient name '{patient_from_db}' with {similarity_score:.1%} similarity"
                         })
+                        
+                        print(f"      Found similar patient: {patient_from_db} (similarity: {similarity_score:.1%})")
             
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"      Error in text similarity search: {e}")
         
         return matches
     
     def _find_claims_by_proximity(self, db_client, data: EnhancedClaimData) -> List[Dict]:
-        """Find claims with similar amounts and dates"""
+        """Find claims with similar amounts and dates - works with existing claims table"""
         matches = []
         
-        if not data.total_amount or not data.treatment_dates:
+        if not data.total_amount:
+            print("      No amount provided for proximity matching")
             return matches
         
         try:
-            # Look for claims with similar amounts (±10%) and recent dates (±7 days)
+            # Look for claims with similar amounts (±10%) within recent timeframe
             amount_min = data.total_amount * 0.9
             amount_max = data.total_amount * 1.1
             
-            query_result = db_client.supabase.table('claims').select('*').gte(
+            print(f"      Searching for amounts between ${amount_min:.2f} and ${amount_max:.2f}")
+            
+            query_result = db_client.supabase.table('claims').select(
+                'id, created_at, claim_amount, metadata, file_name'
+            ).gte(
                 'claim_amount', amount_min
             ).lte('claim_amount', amount_max).execute()
             
+            print(f"      Found {len(query_result.data) if query_result.data else 0} claims in amount range")
+            
             if query_result.data:
                 for claim in query_result.data:
-                    # Calculate date similarity
+                    # Calculate date similarity based on submission date
                     claim_date = datetime.fromisoformat(claim['created_at'].replace('Z', '+00:00'))
                     date_diff = abs((datetime.now() - claim_date).days)
                     
                     if date_diff <= 30:  # Within 30 days
-                        amount_similarity = 1 - abs(data.total_amount - claim['claim_amount']) / data.total_amount
+                        amount_similarity = 1 - abs(data.total_amount - float(claim['claim_amount'])) / data.total_amount
                         date_similarity = max(0, 1 - date_diff / 30)
                         overall_similarity = (amount_similarity * 0.7) + (date_similarity * 0.3)
                         
@@ -795,16 +899,51 @@ class EnhancedClaimProcessor:
                                 'match_type': 'amount_date_proximity',
                                 'days_ago': date_diff,
                                 'claim_id': claim['id'],
-                                'details': f"Similar amount (${claim['claim_amount']}) within {date_diff} days"
+                                'details': f"Similar amount ${float(claim['claim_amount']):.2f} submitted {date_diff} days ago"
                             })
+                            
+                            print(f"      Proximity match: ${float(claim['claim_amount']):.2f} ({overall_similarity:.1%} similarity)")
         
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"      Error in proximity search: {e}")
         
         return matches
     
+    def _calculate_text_similarity_from_claims(self, data: EnhancedClaimData, stored_claim: Dict) -> float:
+        """Calculate text similarity from existing claims table structure"""
+        try:
+            # Extract patient name from metadata->enhanced_results->extracted_data
+            stored_patient_name = None
+            if stored_claim.get('metadata') and isinstance(stored_claim['metadata'], dict):
+                enhanced_results = stored_claim['metadata'].get('enhanced_results', {})
+                if isinstance(enhanced_results, dict):
+                    extracted_data = enhanced_results.get('extracted_data', {})
+                    if isinstance(extracted_data, dict):
+                        stored_patient_name = extracted_data.get('patient_name')
+            
+            if data.patient_name and stored_patient_name:
+                name1 = data.patient_name.lower().strip()
+                name2 = stored_patient_name.lower().strip()
+                
+                # Calculate similarity ratio
+                name_similarity = self._levenshtein_similarity(name1, name2)
+                
+                # Weight by other factors
+                amount_match = 0
+                if data.total_amount and stored_claim.get('claim_amount'):
+                    amount_diff = abs(data.total_amount - float(stored_claim['claim_amount']))
+                    amount_match = max(0, 1 - amount_diff / max(data.total_amount, float(stored_claim['claim_amount'])))
+                
+                # Combined similarity score
+                return (name_similarity * 0.6) + (amount_match * 0.4)
+            
+        except Exception as e:
+            print(f"      Error calculating text similarity: {e}")
+        
+        return 0.0
+    
     def _calculate_text_similarity(self, data: EnhancedClaimData, stored_claim: Dict) -> float:
-        """Calculate text similarity using multiple algorithms"""
+        """Calculate text similarity using multiple algorithms - legacy method"""
         try:
             # Simple Levenshtein distance for patient names
             if data.patient_name and stored_claim.get('metadata', {}).get('patient_name'):
