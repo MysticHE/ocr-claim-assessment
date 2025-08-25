@@ -147,8 +147,8 @@ class EnhancedClaimProcessor:
             ],
             'required_fields': [
                 'patient_name',
-                'treatment_date',
-                'amount'
+                'provider_name',
+                'document_date'
             ],
             'document_type_requirements': {
                 'receipt': ['amount', 'date', 'merchant'],
@@ -620,15 +620,22 @@ class EnhancedClaimProcessor:
         """Enhanced validation with document-type specific checks"""
         issues = []
         
-        # Basic validation (existing logic)
+        # Basic validation (updated required fields)
         if not data.patient_name:
             issues.append("Missing patient name")
         
-        if not data.treatment_dates:
-            issues.append("Missing treatment date")
+        if not data.provider_name:
+            issues.append("Missing provider name")
         
-        if not data.amounts and not data.total_amount:
-            issues.append("Missing claim amount")
+        # Check for document date - can be treatment date, service date, or document date
+        document_date_available = bool(
+            data.treatment_dates or 
+            data.service_dates or 
+            data.document_dates or
+            getattr(data, 'dates', None)
+        )
+        if not document_date_available:
+            issues.append("Missing date of document")
         
         # Document quality validation
         if not data.quality_acceptable:
@@ -641,9 +648,15 @@ class EnhancedClaimProcessor:
             # Map document requirements to extracted data fields
             field_mapping = {
                 'amount': data.total_amount or (data.amounts and data.amounts[0]),
-                'date': data.treatment_dates and data.treatment_dates[0],
+                'date': (data.treatment_dates and data.treatment_dates[0]) or 
+                       (data.service_dates and data.service_dates[0]) or
+                       (data.document_dates and data.document_dates[0]),
+                'document_date': (data.treatment_dates and data.treatment_dates[0]) or 
+                               (data.service_dates and data.service_dates[0]) or
+                               (data.document_dates and data.document_dates[0]),
                 'patient_name': data.patient_name,
                 'provider': data.provider_name,
+                'provider_name': data.provider_name,
                 'merchant': data.provider_name,  # Alias for provider
                 'policy_number': data.policy_number,
                 'claimant_name': data.patient_name,  # Alias for patient

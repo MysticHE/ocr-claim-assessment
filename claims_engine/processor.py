@@ -47,8 +47,8 @@ class ClaimProcessor:
             ],
             'required_fields': [
                 'patient_name',
-                'treatment_date',
-                'amount'
+                'provider_name',
+                'document_date'
             ],
             'valid_diagnosis_prefixes': [
                 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 
@@ -282,15 +282,22 @@ class ClaimProcessor:
         """Validate extracted claim data"""
         issues = []
         
-        # Check required fields
+        # Check required fields (updated)
         if not data.patient_name:
             issues.append("Missing patient name")
         
-        if not data.treatment_dates:
-            issues.append("Missing treatment date")
+        if not data.provider_name:
+            issues.append("Missing provider name")
         
-        if not data.amounts and not data.total_amount:
-            issues.append("Missing claim amount")
+        # Check for document date - can be treatment date, service date, or document date
+        document_date_available = bool(
+            data.treatment_dates or 
+            getattr(data, 'service_dates', None) or 
+            getattr(data, 'document_dates', None) or
+            getattr(data, 'dates', None)
+        )
+        if not document_date_available:
+            issues.append("Missing date of document")
         
         # Validate amounts
         # Remove all amount validation - no limits
