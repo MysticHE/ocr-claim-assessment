@@ -59,7 +59,9 @@
                                 <div class="field-label-wide">Document Type</div>
                                 <div class="field-value-wide">
                                     {% set doc_type = result.document_classification.document_type|lower %}
-                                    {% if 'receipt' in doc_type or 'invoice' in doc_type %}
+                                    {% if 'claims' in doc_type %}
+                                        Medical Claims
+                                    {% elif 'receipt' in doc_type or 'invoice' in doc_type %}
                                         Claims Receipt
                                     {% elif 'referral' in doc_type or 'letter' in doc_type %}
                                         Referral Letter  
@@ -82,59 +84,74 @@
                                 <div class="field-value-wide">{{ result.extracted_data.currency or 'SGD' }}</div>
                             </div>
                             
-                            <!-- Patient ID -->
-                            {% if result.extracted_data.patient_id or result.extracted_data.id %}
+                            <!-- Document Readability -->
                             <div class="extracted-field-wide">
-                                <div class="field-label-wide">Patient ID</div>
-                                <div class="field-value-wide">{{ result.extracted_data.patient_id or result.extracted_data.id or 'ES' }}</div>
+                                <div class="field-label-wide">Document Readability</div>
+                                <div class="field-value-wide">
+                                    {% if result.readability_status %}
+                                        {{ result.readability_status|title }}
+                                    {% elif result.quality_assessment and result.quality_assessment.quality_score %}
+                                        {% set readability_score = result.quality_assessment.quality_score.readability_score %}
+                                        {% if readability_score >= 0.8 %}
+                                            Readable
+                                        {% elif readability_score >= 0.5 %}
+                                            Partially Readable
+                                        {% else %}
+                                            Unreadable
+                                        {% endif %}
+                                    {% else %}
+                                        Readable
+                                    {% endif %}
+                                </div>
                             </div>
-                            {% endif %}
                             
-                            <!-- Claim Number -->
-                            {% if result.extracted_data.claim_number or result.extracted_data.reference %}
+                            <!-- Fraud Detection -->
                             <div class="extracted-field-wide">
-                                <div class="field-label-wide">Claim Number</div>
-                                <div class="field-value-wide">{{ result.extracted_data.claim_number or result.extracted_data.reference or 'None' }}</div>
+                                <div class="field-label-wide">Fraud Detection</div>
+                                <div class="field-value-wide">
+                                    {% if result.duplicate_detected %}
+                                        Duplicate Detected ({{ ((result.duplicate_detected.similarity_score or 0) * 100)|round }}% similarity)
+                                    {% elif result.fraud_findings and result.fraud_findings|length > 0 %}
+                                        {{ result.fraud_findings|length }} Suspicious Indicator(s) Found
+                                    {% else %}
+                                        No Duplicates Found
+                                    {% endif %}
+                                </div>
                             </div>
-                            {% endif %}
                             
-                            <!-- Patient Name -->
-                            {% if result.extracted_data.patient_name or result.extracted_data.name %}
+                            <!-- Claim Submitted Date -->
                             <div class="extracted-field-wide">
-                                <div class="field-label-wide">Patient Name</div>
-                                <div class="field-value-wide">{{ result.extracted_data.patient_name or result.extracted_data.name or 'Clinical' }}</div>
+                                <div class="field-label-wide">Claim Submitted Date</div>
+                                <div class="field-value-wide">
+                                    {% if result.created_at %}
+                                        {{ result.created_at[:10] }}
+                                    {% elif result.extracted_data.document_date %}
+                                        {{ result.extracted_data.document_date }}
+                                    {% else %}
+                                        Today
+                                    {% endif %}
+                                </div>
                             </div>
-                            {% endif %}
                             
-                            <!-- Total Amount -->
-                            {% if result.extracted_data.amount or result.extracted_data.total_amount or result.extracted_data.claim_amount %}
+                            <!-- Visit Date -->
                             <div class="extracted-field-wide">
-                                <div class="field-label-wide">Total Amount</div>
-                                <div class="field-value-wide">{{ result.extracted_data.amount or result.extracted_data.total_amount or result.extracted_data.claim_amount or 'None' }}</div>
+                                <div class="field-label-wide">Visit Date</div>
+                                <div class="field-value-wide">
+                                    {% if result.extracted_data.visit_dates and result.extracted_data.visit_dates|length > 0 %}
+                                        {{ result.extracted_data.visit_dates[0] }}
+                                    {% elif result.extracted_data.treatment_dates and result.extracted_data.treatment_dates|length > 0 %}
+                                        {{ result.extracted_data.treatment_dates[0] }}
+                                    {% else %}
+                                        Not Available
+                                    {% endif %}
+                                </div>
                             </div>
-                            {% endif %}
-                            
-                            <!-- Policy Number -->
-                            {% if result.extracted_data.policy_number %}
-                            <div class="extracted-field-wide">
-                                <div class="field-label-wide">Policy Number</div>
-                                <div class="field-value-wide">{{ result.extracted_data.policy_number or 'None' }}</div>
-                            </div>
-                            {% endif %}
                             
                             <!-- Provider Name -->
                             {% if result.extracted_data.provider_name or result.extracted_data.doctor or result.extracted_data.clinic %}
                             <div class="extracted-field-wide">
                                 <div class="field-label-wide">Provider Name</div>
-                                <div class="field-value-wide">{{ result.extracted_data.provider_name or result.extracted_data.doctor or result.extracted_data.clinic or 'AI Treatment Including Diagnostics Tests Due Illness Or Injury.' }}</div>
-                            </div>
-                            {% endif %}
-                            
-                            <!-- Diagnosis Codes -->
-                            {% if result.extracted_data.diagnosis_codes or result.extracted_data.icd_codes %}
-                            <div class="extracted-field-wide">
-                                <div class="field-label-wide">Diagnosis Codes</div>
-                                <div class="field-value-wide">{{ result.extracted_data.diagnosis_codes or result.extracted_data.icd_codes or '[]' }}</div>
+                                <div class="field-value-wide">{{ result.extracted_data.provider_name or result.extracted_data.doctor or result.extracted_data.clinic or 'Singapore General Hospital' }}</div>
                             </div>
                             {% endif %}
                             
@@ -146,8 +163,14 @@
                                         APPROVED
                                     {% elif result.status == 'rejected' %}
                                         REJECTED
+                                        {% if result.decision_reasons and result.decision_reasons|length > 0 %}
+                                            <br><small>Reason: {{ result.decision_reasons[0] }}</small>
+                                        {% endif %}
                                     {% elif result.status == 'review' %}
                                         REVIEW REQUIRED
+                                        {% if result.decision_reasons and result.decision_reasons|length > 0 %}
+                                            <br><small>Reason: {{ result.decision_reasons[0] }}</small>
+                                        {% endif %}
                                     {% else %}
                                         {{ result.status|upper }}
                                     {% endif %}

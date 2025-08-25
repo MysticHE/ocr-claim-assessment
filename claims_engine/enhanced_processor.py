@@ -43,6 +43,10 @@ class EnhancedClaimData:
     total_amount: Optional[float] = None
     currency: str = 'SGD'
     
+    # New fields for enhanced extraction
+    visit_dates: List[str] = None
+    document_date: Optional[str] = None
+    
     # AI Analysis Results
     document_type: Optional[str] = None
     document_classification_confidence: float = 0.0
@@ -60,6 +64,8 @@ class EnhancedClaimData:
             self.diagnosis_codes = []
         if self.treatment_dates is None:
             self.treatment_dates = []
+        if self.visit_dates is None:
+            self.visit_dates = []
         if self.amounts is None:
             self.amounts = []
         if self.quality_issues is None:
@@ -483,6 +489,10 @@ class EnhancedClaimProcessor:
                     extracted.amounts = ai_data.get('amounts', [])
                     extracted.total_amount = ai_data.get('total_amount')
                     extracted.currency = ai_data.get('currency', 'SGD')
+                    
+                    # Map new fields from OpenAI
+                    extracted.visit_dates = ai_data.get('visit_dates', [])
+                    extracted.document_date = ai_data.get('document_date')
                     
                     # Store OpenAI insights
                     extracted.ai_confidence_scores = {

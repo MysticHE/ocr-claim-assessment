@@ -67,6 +67,8 @@ Extract the following information and return as valid JSON only (no additional t
   "provider_name": "Healthcare provider/clinic/hospital name or null",
   "diagnosis_codes": ["List of ICD-10 codes found or empty array"],
   "treatment_dates": ["YYYY-MM-DD format dates or empty array"],
+  "visit_dates": ["YYYY-MM-DD format visit/appointment dates or empty array"],
+  "document_date": "YYYY-MM-DD format document creation/submission date or null",
   "amounts": [list of numeric amounts found],
   "total_amount": numeric_total_or_null,
   "currency": "SGD|USD|MYR detected currency",
@@ -74,6 +76,7 @@ Extract the following information and return as valid JSON only (no additional t
   "document_insights": {{
     "document_appears_genuine": true_or_false,
     "data_completeness": 0.85,
+    "readability_assessment": "readable|partially_readable|unreadable",
     "suspicious_patterns": ["list of any suspicious elements"],
     "missing_critical_fields": ["list of missing required fields"],
     "extraction_notes": "Brief notes about the extraction process"
@@ -91,6 +94,15 @@ Special Instructions for Document Classification and Extraction:
 - Singapore format: Look for patterns like "TAN WENBIN", "LEE MING HUA" (2-3 words, all caps)
 - Extract ALL amounts found - no limits on claim amounts
 - For SGH bills: Look for "AMOUNT DUE :" followed by patient name and final amount
+- Visit dates: Extract dates related to actual medical visits/consultations/treatments
+- Document date: Extract invoice date, bill date, document creation date, or admission/discharge dates
+- Readability assessment: Based on document quality, text clarity, and completeness
+
+Date Extraction Guidelines:
+- treatment_dates: Dates when medical services were provided
+- visit_dates: Same as treatment_dates but specifically for appointments/consultations
+- document_date: When the document was created/issued (invoice date, admission date, etc.)
+- Look for patterns: "Date:", "Invoice Date:", "Visit Date:", "Admission:", "Service Date:"
 
 Rules:
 - Return ONLY valid JSON, no markdown or explanations

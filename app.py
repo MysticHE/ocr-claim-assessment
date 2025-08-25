@@ -418,6 +418,28 @@ def view_enhanced_results(claim_id):
         if enhanced_data:
             print(f"   Enhanced data keys: {list(enhanced_data.keys()) if isinstance(enhanced_data, dict) else 'Not a dict'}")
         
+        # Helper function to determine readability status
+        def get_readability_status(quality_data, extracted_data):
+            # First check if OpenAI provided readability assessment
+            if extracted_data and isinstance(extracted_data, dict):
+                document_insights = extracted_data.get('document_insights', {})
+                if document_insights and 'readability_assessment' in document_insights:
+                    return document_insights['readability_assessment']
+            
+            # Fallback to quality assessment score
+            if quality_data and isinstance(quality_data, dict):
+                quality_score = quality_data.get('quality_score', {})
+                if isinstance(quality_score, dict) and 'readability_score' in quality_score:
+                    readability_score = quality_score['readability_score']
+                    if readability_score >= 0.8:
+                        return "readable"
+                    elif readability_score >= 0.5:
+                        return "partially_readable"
+                    else:
+                        return "unreadable"
+            
+            return "readable"  # Default fallback
+        
         # Structure data as expected by template
         result = {
             'claim_id': claim_id,
@@ -441,6 +463,12 @@ def view_enhanced_results(claim_id):
             'ai_engines_used': enhanced_data.get('ai_engines_used', []) if enhanced_data else [],
             'workflow_completion': enhanced_data.get('workflow_completion', {}) if enhanced_data else {},
             'duplicate_detected': enhanced_data.get('duplicate_detected', None) if enhanced_data else None,
+            
+            # New fields for updated summary
+            'readability_status': get_readability_status(
+                enhanced_data.get('quality_assessment') if enhanced_data else None,
+                enhanced_data.get('extracted_data') if enhanced_data else None
+            ),
             
             # For backward compatibility and debugging
             'metadata': claim_data.get('metadata', {}),
