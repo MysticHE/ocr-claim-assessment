@@ -637,9 +637,10 @@ class EnhancedClaimProcessor:
         if not document_date_available:
             issues.append("Missing date of document")
         
-        # Document quality validation
-        if not data.quality_acceptable:
-            issues.append("Document quality below acceptable threshold")
+        # Document quality validation - REMOVED in Version 2.3.0
+        # Quality assessment performed for informational purposes only
+        # if not data.quality_acceptable:
+        #     issues.append("Document quality below acceptable threshold")
         
         # Document type specific validation
         if data.document_type and data.document_type in self.rules['document_type_requirements']:
