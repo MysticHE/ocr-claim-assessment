@@ -306,21 +306,42 @@ class EnhancedClaimProcessor:
             )
             
             classification_result = None
+            mistral_result = None
+            
+            # Try Mistral AI classifier first
             if self.classifier_available:
-                classification_result = self.document_classifier.classify_document(
+                mistral_result = self.document_classifier.classify_document(
                     ocr_result.get('text', ''), image_path
                 )
-                current_step.confidence_score = classification_result.confidence
-                current_step.output_summary = f"Classified as: {classification_result.document_type.value}"
-                current_step.status = "completed"
+                
+                # Use Mistral result if confidence is high enough
+                if mistral_result.confidence >= 0.5:  # Require at least 50% confidence
+                    classification_result = mistral_result
+                    current_step.confidence_score = mistral_result.confidence
+                    current_step.output_summary = f"Mistral classified as: {mistral_result.document_type.value}"
+                    current_step.ai_engine_used = "mistral_ai"
+                    current_step.status = "completed"
+                else:
+                    # Mistral confidence too low, fall back to enhanced classification
+                    doc_type = self._simple_document_classification(ocr_result.get('text', ''))
+                    current_step.confidence_score = 0.75  # Higher confidence for enhanced classification
+                    current_step.output_summary = f"Enhanced classification: {doc_type} (Mistral confidence too low: {mistral_result.confidence:.2f})"
+                    current_step.ai_engine_used = "enhanced_rules"
+                    current_step.status = "completed"
+                    
+                    # Create enhanced classification result
+                    from collections import namedtuple
+                    ClassificationResult = namedtuple('ClassificationResult', ['document_type', 'confidence'])
+                    classification_result = ClassificationResult(document_type=doc_type, confidence=0.75)
             else:
-                # Enhanced text-based classification fallback
+                # Mistral not available, use enhanced classification
                 doc_type = self._simple_document_classification(ocr_result.get('text', ''))
-                current_step.confidence_score = 0.7  # Higher confidence for improved classification
-                current_step.output_summary = f"Enhanced classification: {doc_type}"
+                current_step.confidence_score = 0.7
+                current_step.output_summary = f"Enhanced classification: {doc_type} (Mistral not available)"
+                current_step.ai_engine_used = "enhanced_rules"
                 current_step.status = "completed"
                 
-                # Create a mock classification result for OpenAI extraction
+                # Create enhanced classification result
                 from collections import namedtuple
                 ClassificationResult = namedtuple('ClassificationResult', ['document_type', 'confidence'])
                 classification_result = ClassificationResult(document_type=doc_type, confidence=0.7)
@@ -428,7 +449,7 @@ class EnhancedClaimProcessor:
                 'workflow_steps': [self._workflow_step_to_dict(step) for step in workflow_steps],
                 
                 # AI Analysis results
-                'document_classification': classification_result.to_dict() if classification_result else None,
+                'document_classification': self._classification_to_dict(classification_result) if classification_result else None,
                 'quality_assessment': quality_result.to_dict() if quality_result else None,
                 'ai_engines_used': [step.ai_engine_used for step in workflow_steps if step.ai_engine_used],
                 
@@ -1450,3 +1471,22 @@ class EnhancedClaimProcessor:
             })
         
         return line_items
+    
+    def _classification_to_dict(self, classification_result) -> Dict[str, Any]:
+        """Convert classification result to dict, handling both namedtuple and object types"""
+        if hasattr(classification_result, 'to_dict'):
+            # Real DocumentClassificationResult object
+            return classification_result.to_dict()
+        else:
+            # Namedtuple fallback result
+            document_type = classification_result.document_type
+            if hasattr(document_type, 'value'):
+                document_type = document_type.value
+                
+            return {
+                'document_type': document_type,
+                'confidence': classification_result.confidence,
+                'reasoning': ['Simple text-based classification'],
+                'detected_features': [],
+                'processing_time_ms': 0
+            }
