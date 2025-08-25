@@ -2,6 +2,7 @@ import re
 import json
 import hashlib
 import time
+import os
 from typing import Dict, List, Any, Optional, Tuple
 from datetime import datetime, timedelta
 from dataclasses import dataclass, asdict
@@ -657,7 +658,8 @@ class EnhancedClaimProcessor:
         """Enhanced fraud detection with detailed, user-friendly reasons"""
         suspicious_findings = []
         
-        print("Running comprehensive fraud detection analysis...")
+        # Disable verbose logging in production to prevent timeouts
+        debug_mode = False  # Temporarily disabled to fix production timeout
         
         # 1. Pattern-based text detection
         text = ocr_result.get('text', '').lower()
@@ -675,7 +677,8 @@ class EnhancedClaimProcessor:
                     pattern_findings.append(f"Suspicious text pattern detected: {pattern}")
         
         if pattern_findings:
-            print(f"   Text analysis: Found {len(pattern_findings)} suspicious patterns")
+            if debug_mode:
+                print(f"   Text analysis: Found {len(pattern_findings)} suspicious patterns")
             suspicious_findings.extend(pattern_findings)
         
         # 2. Database duplicate detection
@@ -752,15 +755,14 @@ class EnhancedClaimProcessor:
             # Enhanced database duplicate detection with better error handling
             from database.supabase_client import SupabaseClient
             
-            print("Starting database duplicate detection...")
+            # Reduced logging for production performance
             db_client = SupabaseClient()
             
             # Test database connection first
             if not db_client.test_connection():
-                print("Database connection failed - falling back to in-memory checking")
                 return self._fallback_duplicate_check(data)
             
-            print("Database connected - running advanced duplicate detection")
+            # Continue with database duplicate detection
             
             # Calculate multiple similarity metrics
             duplicates_found = []
@@ -769,21 +771,14 @@ class EnhancedClaimProcessor:
             claim_key = f"{data.patient_name}|{data.total_amount}|{data.treatment_dates}|{data.provider_name}"
             claim_hash = hashlib.md5(claim_key.encode()).hexdigest()
             
-            print(f"   Generated claim hash: {claim_hash[:8]}...")
-            
-            # 2. Check existing claims table for similar records
+            # Search for duplicates with minimal logging
             if data.patient_name:
-                print(f"   Searching for similar patient names to: {data.patient_name}")
                 similar_claims = self._find_similar_claims_by_text(db_client, data)
                 duplicates_found.extend(similar_claims)
-                print(f"   Found {len(similar_claims)} similar text matches")
             
-            # 3. Amount and date proximity matching
             if data.total_amount:
-                print(f"   Searching for similar amounts to: ${data.total_amount}")
                 proximity_matches = self._find_claims_by_proximity(db_client, data)
                 duplicates_found.extend(proximity_matches)
-                print(f"   Found {len(proximity_matches)} proximity matches")
             
             if duplicates_found:
                 # Return the highest similarity match
@@ -829,7 +824,7 @@ class EnhancedClaimProcessor:
                 (datetime.now() - timedelta(days=90)).isoformat()
             ).execute()
             
-            print(f"      Checking {len(query_result.data) if query_result.data else 0} recent claims")
+            # Removed logging for production performance
             
             if query_result.data:
                 for claim in query_result.data:
@@ -852,7 +847,7 @@ class EnhancedClaimProcessor:
                             'details': f"Similar patient name '{patient_from_db}' with {similarity_score:.1%} similarity"
                         })
                         
-                        print(f"      Found similar patient: {patient_from_db} (similarity: {similarity_score:.1%})")
+                        # Removed logging for production performance
             
         except Exception as e:
             print(f"      Error in text similarity search: {e}")
