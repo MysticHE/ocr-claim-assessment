@@ -1771,7 +1771,7 @@
 
 .workflow-step {
   display: flex;
-  gap: 5rem !important;
+  gap: 7rem !important;
   align-items: flex-start;
   padding: 1.5rem;
   background: var(--surface-color);
@@ -1820,7 +1820,7 @@
 
 .step-content {
   flex: 1;
-  margin-left: 2rem !important;
+  margin-left: 3rem !important;
 }
 
 .step-title {
