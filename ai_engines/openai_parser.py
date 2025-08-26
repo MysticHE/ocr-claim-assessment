@@ -69,6 +69,7 @@ Extract the following information and return as valid JSON only (no additional t
   "diagnosis_codes": ["List of ICD-10 codes found or empty array"],
   "treatment_dates": ["YYYY-MM-DD format dates or empty array"],
   "visit_dates": ["YYYY-MM-DD format visit/appointment dates or empty array"],
+  "service_dates": ["YYYY-MM-DD dates when services were rendered/provided or empty array"],
   "document_date": "YYYY-MM-DD format document creation/submission date or null",
   "line_items": [
     {{
@@ -107,10 +108,23 @@ Special Instructions for Document Classification and Extraction:
 - Readability assessment: Based on document quality, text clarity, and completeness
 
 Date Extraction Guidelines:
-- treatment_dates: Dates when medical services were provided
-- visit_dates: Same as treatment_dates but specifically for appointments/consultations
-- document_date: When the document was created/issued (invoice date, admission date, etc.)
-- Look for patterns: "Date:", "Invoice Date:", "Visit Date:", "Admission:", "Service Date:"
+- treatment_dates: Dates when medical services were provided (clinical treatment dates)
+- visit_dates: Dates of patient appointments/consultations with healthcare providers
+- service_dates: Dates when billable services were rendered (most important for billing)
+- document_date: When the document was created/issued (invoice date, bill date, admission date, etc.)
+
+Date Extraction Priority & Intelligence:
+1. **Service Date** (highest priority): Look for "Service Date:", "Date of Service:", dates on invoice lines
+2. **Treatment Date**: Look for "Treatment Date:", "Date of Treatment:", clinical service dates
+3. **Visit Date**: Look for "Visit Date:", "Appointment Date:", "Consultation Date:"
+4. **Document Date**: Look for "Invoice Date:", "Bill Date:", "Date:", "Admission:", "Discharge:"
+
+Smart Date Detection:
+- Invoice documents: prioritize invoice date as document_date, service dates as service_dates
+- Medical records: prioritize treatment dates and visit dates
+- Hospital bills: look for admission/discharge dates, service dates for each line item
+- Consultation notes: focus on visit dates and treatment dates
+- Extract ALL relevant dates found, don't limit to just one type
 
 Provider Name Extraction Guidelines:
 - Look for hospital names: "Singapore General Hospital", "Mount Elizabeth Hospital", "Tan Tock Seng Hospital"

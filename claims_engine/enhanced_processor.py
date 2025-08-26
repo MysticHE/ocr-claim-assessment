@@ -46,7 +46,8 @@ class EnhancedClaimData:
     
     # New fields for enhanced extraction
     visit_dates: List[str] = None
-    document_date: Optional[str] = None
+    service_dates: List[str] = None  # Date of service/treatment as indicated in document
+    document_date: Optional[str] = None  # Date document was created/issued
     line_items: List[Dict[str, Any]] = None
     
     # AI Analysis Results
@@ -66,6 +67,8 @@ class EnhancedClaimData:
             self.treatment_dates = []
         if self.visit_dates is None:
             self.visit_dates = []
+        if self.service_dates is None:
+            self.service_dates = []
         if self.line_items is None:
             self.line_items = []
         if self.amounts is None:
@@ -571,6 +574,7 @@ class EnhancedClaimProcessor:
                     
                     # Map new fields from OpenAI
                     extracted.visit_dates = ai_data.get('visit_dates', [])
+                    extracted.service_dates = ai_data.get('service_dates', [])
                     extracted.document_date = ai_data.get('document_date')
                     extracted.line_items = ai_data.get('line_items', [])
                     
@@ -641,11 +645,21 @@ class EnhancedClaimProcessor:
         
         # AI confidence scores removed for simplified processing
         
-        # Post-processing: Fill missing visit_dates with document_date or treatment_dates
-        if not extracted.visit_dates and extracted.document_date:
+        # Post-processing: Fill missing dates with intelligent fallbacks
+        # Service dates are most important (date of actual service/treatment)
+        if not extracted.service_dates:
+            if extracted.treatment_dates:
+                extracted.service_dates = extracted.treatment_dates
+            elif extracted.visit_dates:
+                extracted.service_dates = extracted.visit_dates
+            elif extracted.document_date:
+                extracted.service_dates = [extracted.document_date]
+        
+        # Fill visit_dates if missing
+        if not extracted.visit_dates and extracted.service_dates:
+            extracted.visit_dates = extracted.service_dates
+        elif not extracted.visit_dates and extracted.document_date:
             extracted.visit_dates = [extracted.document_date]
-        elif not extracted.visit_dates and extracted.treatment_dates:
-            extracted.visit_dates = extracted.treatment_dates[:1]  # Use first treatment date
         
         # Set processing stage
         extracted.processing_stage = "data_extracted"
@@ -663,8 +677,9 @@ class EnhancedClaimProcessor:
         if not data.provider_name:
             issues.append("Missing provider name")
         
-        # Check for document date - can be treatment date, visit date, or document date
+        # Check for document date - can be service date, treatment date, visit date, or document date
         document_date_available = bool(
+            data.service_dates or
             data.treatment_dates or 
             data.visit_dates or 
             data.document_date or
@@ -685,10 +700,12 @@ class EnhancedClaimProcessor:
             # Map document requirements to extracted data fields
             field_mapping = {
                 'amount': data.total_amount or (data.amounts and data.amounts[0]),
-                'date': (data.treatment_dates and data.treatment_dates[0]) or 
+                'date': (data.service_dates and data.service_dates[0]) or
+                       (data.treatment_dates and data.treatment_dates[0]) or 
                        (data.visit_dates and data.visit_dates[0]) or
                        data.document_date,
-                'document_date': (data.treatment_dates and data.treatment_dates[0]) or 
+                'document_date': (data.service_dates and data.service_dates[0]) or
+                               (data.treatment_dates and data.treatment_dates[0]) or 
                                (data.visit_dates and data.visit_dates[0]) or
                                data.document_date,
                 'patient_name': data.patient_name,
