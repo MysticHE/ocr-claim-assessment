@@ -440,49 +440,95 @@ Translate any non-English content to English while preserving the document struc
         return max(0.0, min(1.0, confidence))
     
     def _clean_repetitive_patterns(self, text: str) -> str:
-        """Clean up repetitive patterns that can occur in OCR processing"""
+        """Clean up repetitive patterns caused by Mistral OCR API parsing bugs"""
         if not text:
             return text
         
         original_length = len(text)
         lines = text.split('\n')
         
-        # Remove excessive repetitive "Next:" patterns
+        # Detect and remove obvious API hallucination patterns
         cleaned_lines = []
         next_count = 0
-        max_next_repetitions = 10  # Allow up to 10 "Next:" entries
+        consecutive_numbered_next = 0
+        max_legitimate_next = 3  # Very conservative - most real documents have 0-3 "Next:" instructions
         
-        for line in lines:
+        for i, line in enumerate(lines):
             line_stripped = line.strip()
             
-            # Check for repetitive "Next:" pattern
-            if line_stripped.startswith('**Next:**') or line_stripped == 'Next:':
+            # Pattern 1: Detect obvious "Next:" repetition (API bug signature)
+            if (line_stripped.startswith('**Next:**') or 
+                line_stripped == 'Next:' or
+                line_stripped.endswith('**Next:**')):
                 next_count += 1
-                if next_count <= max_next_repetitions:
+                
+                # Allow very few legitimate "Next:" entries
+                if next_count <= max_legitimate_next:
                     cleaned_lines.append(line)
-                # Skip excessive repetitions
-                continue
+                else:
+                    # Skip API hallucination - this shouldn't exist in medical documents
+                    continue
+            
+            # Pattern 2: Detect numbered "Next:" sequences (major API bug indicator)
+            elif any(line_stripped.startswith(f'{i}. **Next:**') for i in range(1, 500)):
+                consecutive_numbered_next += 1
+                
+                # This is definitely an API bug - medical bills don't have numbered "Next:" lists
+                if consecutive_numbered_next <= 2:  # Allow maybe 1-2 as edge case
+                    cleaned_lines.append(line)
+                else:
+                    # Skip obvious API parsing error
+                    continue
             else:
-                # Reset counter when we encounter non-Next content
-                next_count = 0
+                # Reset counters when we encounter legitimate content
+                consecutive_numbered_next = 0
+                if not (line_stripped.startswith('**Next:**') or line_stripped == 'Next:'):
+                    next_count = 0  # Only reset for non-Next content
                 cleaned_lines.append(line)
         
-        # Additional cleanup for other repetitive patterns
+        # Additional cleanup for API hallucination patterns
         cleaned_text = '\n'.join(cleaned_lines)
         
-        # Remove excessive repeated numbers (like 291. 292. 293. etc.)
         import re
-        # Remove patterns like "291. **Next:**" repeated many times
-        cleaned_text = re.sub(r'(\d+\.\s*\*\*Next:\*\*\s*\n?){10,}', 
-                             '**[Multiple navigation steps omitted for brevity]**\n', 
+        
+        # Remove massive numbered "Next:" sequences (obvious API bug)
+        cleaned_text = re.sub(r'(\d+\.\s*\*\*Next:\*\*\s*\n?){5,}', 
+                             '\n**[API parsing error detected and cleaned - multiple repetitive entries removed]**\n', 
                              cleaned_text)
         
-        # Remove excessive whitespace
-        cleaned_text = re.sub(r'\n\s*\n\s*\n', '\n\n', cleaned_text)
+        # Remove repetitive standalone "Next:" lines
+        cleaned_text = re.sub(r'(\*\*Next:\*\*\s*\n?){10,}', 
+                             '\n**[Repetitive OCR parsing error cleaned]**\n', 
+                             cleaned_text)
+        
+        # Clean up excessive whitespace
+        cleaned_text = re.sub(r'\n\s*\n\s*\n+', '\n\n', cleaned_text)
+        
+        # Remove obvious pattern corruption at end of documents
+        if 'Next:' in cleaned_text and cleaned_text.count('Next:') > 20:
+            # This is definitely an API bug - truncate at first major repetition
+            lines_final = cleaned_text.split('\n')
+            final_lines = []
+            next_density = 0
+            
+            for line in lines_final:
+                if 'Next:' in line:
+                    next_density += 1
+                    if next_density > 10:  # Stop processing when we hit obvious repetition
+                        final_lines.append('\n**[OCR API error: Excessive repetitive content removed to prevent processing issues]**')
+                        break
+                else:
+                    next_density = max(0, next_density - 1)  # Decay counter
+                
+                final_lines.append(line)
+            
+            cleaned_text = '\n'.join(final_lines)
         
         final_length = len(cleaned_text)
-        if original_length > final_length * 1.5:  # Significant reduction
-            print(f"   OCR cleaning: {original_length} -> {final_length} chars ({((original_length - final_length) / original_length * 100):.1f}% reduction)")
+        if original_length > final_length * 1.2:  # Any significant reduction indicates API bug
+            reduction_pct = ((original_length - final_length) / original_length * 100)
+            print(f"   Mistral OCR API bug detected and cleaned: {original_length} -> {final_length} chars ({reduction_pct:.1f}% reduction)")
+            print(f"   Removed repetitive patterns that don't match document content")
         
         return cleaned_text
 
