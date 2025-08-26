@@ -454,47 +454,35 @@ class EnhancedClaimProcessor:
             
             # Compile results with robust JSON serialization
             try:
-                print("Starting result compilation...")
-                
                 # Safely convert extracted data
-                print("Converting extracted data to dict...")
                 try:
                     extracted_data_dict = extracted_data.to_dict()
-                    print(f"extracted_data.to_dict() successful - {len(extracted_data_dict)} fields")
                 except Exception as e:
                     print(f"Warning: extracted_data.to_dict() failed: {e}")
                     extracted_data_dict = self._safe_dataclass_to_dict(extracted_data)
-                    print(f"Fallback conversion successful - {len(extracted_data_dict)} fields")
                 
                 # Safely convert classification result
-                print("Converting classification result...")
                 try:
                     classification_dict = self._classification_to_dict(classification_result) if classification_result else None
-                    print(f"Classification conversion successful")
                 except Exception as e:
                     print(f"Warning: classification conversion failed: {e}")
                     classification_dict = None
                 
                 # Safely convert quality result
-                print("Converting quality result...")
                 try:
                     quality_dict = quality_result.to_dict() if quality_result else None
-                    print(f"Quality conversion successful")
                 except Exception as e:
                     print(f"Warning: quality_result.to_dict() failed: {e}")
                     quality_dict = None
                 
                 # Safely convert workflow steps
-                print(f"Converting {len(workflow_steps)} workflow steps...")
                 try:
                     workflow_steps_dict = [self._workflow_step_to_dict(step) for step in workflow_steps]
-                    print(f"Workflow steps conversion successful - {len(workflow_steps_dict)} steps")
                 except Exception as e:
                     print(f"Warning: workflow steps conversion failed: {e}")
                     workflow_steps_dict = []
                 
-                print("Creating final result dictionary...")
-                final_result = {
+                return {
                     'success': True,
                     'status': decision.status.value,
                     'confidence': decision.confidence,
@@ -522,19 +510,13 @@ class EnhancedClaimProcessor:
                         'skipped_steps': len([s for s in workflow_steps if s.status == "skipped"])
                     }
                 }
-                print(f"SUCCESS! Returning result with success={final_result['success']}")
-                return final_result
             except Exception as compilation_error:
                 print(f"Critical error during result compilation: {compilation_error}")
                 raise compilation_error  # Re-raise to trigger the outer exception handler
             
         except Exception as e:
-            # Enhanced error logging to capture the actual error
-            print(f"CRITICAL ERROR in enhanced processing: {str(e)}")
-            print(f"Error type: {type(e).__name__}")
-            import traceback
-            print("Full traceback:")
-            traceback.print_exc()
+            # Log error for debugging
+            print(f"Enhanced processing error: {type(e).__name__}: {str(e)}")
             
             # Mark current step as failed if there was one in progress
             if current_step and current_step.status == "in_progress":
@@ -550,7 +532,6 @@ class EnhancedClaimProcessor:
                 'reasons': [f"Enhanced processing error: {str(e)}"],
                 'processing_notes': "Claim requires manual review due to processing error",
                 'error': str(e),
-                'error_type': type(e).__name__,
                 'workflow_steps': [self._workflow_step_to_dict(step) for step in workflow_steps]
             }
     
@@ -682,11 +663,11 @@ class EnhancedClaimProcessor:
         if not data.provider_name:
             issues.append("Missing provider name")
         
-        # Check for document date - can be treatment date, service date, or document date
+        # Check for document date - can be treatment date, visit date, or document date
         document_date_available = bool(
             data.treatment_dates or 
-            data.service_dates or 
-            data.document_dates or
+            data.visit_dates or 
+            data.document_date or
             getattr(data, 'dates', None)
         )
         if not document_date_available:
@@ -705,11 +686,11 @@ class EnhancedClaimProcessor:
             field_mapping = {
                 'amount': data.total_amount or (data.amounts and data.amounts[0]),
                 'date': (data.treatment_dates and data.treatment_dates[0]) or 
-                       (data.service_dates and data.service_dates[0]) or
-                       (data.document_dates and data.document_dates[0]),
+                       (data.visit_dates and data.visit_dates[0]) or
+                       data.document_date,
                 'document_date': (data.treatment_dates and data.treatment_dates[0]) or 
-                               (data.service_dates and data.service_dates[0]) or
-                               (data.document_dates and data.document_dates[0]),
+                               (data.visit_dates and data.visit_dates[0]) or
+                               data.document_date,
                 'patient_name': data.patient_name,
                 'provider': data.provider_name,
                 'provider_name': data.provider_name,
