@@ -3,7 +3,7 @@
 ## Project Overview
 🎉 **PHASE 1 MVP COMPLETE & STREAMLINED** - Advanced AI-powered document processing system for insurance claims implementing **95% of PDF workflow requirements**. Features comprehensive AI pipeline with document classification, quality assessment, fraud detection, and intelligent decision making.
 
-**Version 2.1**: Now featuring **Automatic Language Detection** with guaranteed English output - no manual language selection required!
+**Version 2.4**: Latest improvements - **Streamlined User Experience** with simplified fraud detection and enhanced data extraction!
 
 ### Phase 1 Implementation Status: ✅ COMPLETED
 
@@ -46,23 +46,25 @@
 ### 📊 Enhanced Data Extraction
 - **🤖 OpenAI GPT-4o-mini Intelligence**: Advanced natural language understanding for data extraction 
 - **🔧 Smart Fallback System**: Automatic fallback to regex-based extraction if OpenAI unavailable
+- **Intelligent Date Recognition**: "Date Recorded" extraction from invoice dates, document creation dates
+- **Flexible Claim Numbers**: Extracts claim numbers, receipt numbers, invoice numbers, reference numbers
 - **Structured Extraction**: Patient info, amounts, dates, diagnosis codes, provider details
 - **Auto-Translation**: Extracts data in any language and translates to English
 - **Currency Handling**: SGD, USD, MYR with automatic conversion
 - **ICD-10 Support**: Medical diagnosis code extraction and validation with English descriptions
 - **Context-Aware Parsing**: Uses document type and quality scores for improved accuracy
 
-### 🛡️ Fraud Detection System
-- **Pattern Analysis**: Suspicious text pattern detection
-- **Duplicate Detection**: Content-based duplicate claim identification
-- **Quality-based Indicators**: Document tampering detection via quality analysis
-- **Risk Scoring**: Multi-factor fraud risk assessment
+### 🛡️ Simplified Fraud Detection System
+- **Duplicate Detection Only**: Focused on preventing duplicate claim submissions
+- **Content-based Matching**: Advanced similarity detection using fuzzy matching
+- **Clean Document Approval**: Quality issues are informational only, don't trigger fraud alerts
+- **User-Friendly Results**: No false positives for clear, legitimate documents
 
 ### ⚙️ Intelligent Rule Engine
 - **Document-Specific Rules**: Tailored validation for each document type
-- **Confidence-based Decisions**: AI-powered auto-approval thresholds
+- **Simplified Decision Making**: Focus on critical fields (patient name, provider, amount)
+- **Quality-Aware Processing**: Quality issues noted for information but don't block approval
 - **Policy Integration**: Configurable business rules and limits
-- **Multi-factor Scoring**: OCR + classification + quality + completeness
 
 ### 📈 Comprehensive Workflow Tracking
 - **8-Step Pipeline**: Document upload → Quality → Classification → Auto-OCR → Extraction → Validation → Fraud → Policy → Decision → Results
@@ -264,6 +266,36 @@ flowchart TD
 - **Fallback Rate**: <5% with proper API configuration
 
 ## Recent Issues Resolved
+
+### Version 2.4.0 - UX & Fraud Detection Improvements (Latest)
+**Status: ✅ DEPLOYED - Enhanced user experience with simplified fraud detection**
+
+#### User Experience Improvements:
+1. **Simplified Data Model**:
+   - Removed confusing `service_dates` field
+   - Renamed "VISIT DATES" → "DATE RECORDED" for clarity
+   - Focus on document recording/creation dates
+
+2. **Enhanced AI Extraction**:
+   - Improved claim number extraction: claim/receipt/invoice/reference numbers
+   - Better date intelligence: prioritizes document creation dates
+   - More accurate field mapping for different document types
+
+3. **Streamlined Fraud Detection**:
+   - **REMOVED**: Image quality warnings, suspicious text patterns, amount anomalies
+   - **KEPT**: Only duplicate claim detection
+   - **RESULT**: Clean documents no longer trigger false fraud alerts
+
+4. **Improved Decision Logic**:
+   - Quality issues are now informational only
+   - Approval based on critical fields: patient name, provider, amount
+   - Clear documents get approved without quality-based rejections
+
+#### Technical Fixes:
+- Fixed `AttributeError: 'EnhancedClaimData' object has no attribute 'service_dates'`
+- Enhanced JSON serialization with robust error handling
+- Updated validation logic for simplified field structure
+- Improved OpenAI prompt engineering for better extraction accuracy
 
 ### Version 2.2.0 - FINAL WORKING SOLUTION: Unified Mistral OCR API
 **Status: ✅ FULLY RESOLVED - Both PDFs and images now working correctly**
