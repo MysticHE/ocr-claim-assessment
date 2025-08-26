@@ -76,8 +76,32 @@ class EnhancedClaimData:
             self.workflow_steps_completed = []
     
     def to_dict(self) -> Dict[str, Any]:
-        """Convert to dictionary for JSON serialization"""
-        return asdict(self)
+        """Convert to dictionary for JSON serialization with error handling"""
+        try:
+            return asdict(self)
+        except Exception as e:
+            print(f"Warning: asdict() failed for EnhancedClaimData: {e}")
+            # Fallback to manual conversion
+            result = {}
+            for field_name in self.__dataclass_fields__:
+                try:
+                    value = getattr(self, field_name, None)
+                    if value is None:
+                        result[field_name] = None
+                    elif isinstance(value, (str, int, float, bool)):
+                        result[field_name] = value
+                    elif isinstance(value, list):
+                        result[field_name] = list(value)
+                    elif isinstance(value, dict):
+                        result[field_name] = dict(value)
+                    elif hasattr(value, 'isoformat'):  # datetime objects
+                        result[field_name] = value.isoformat()
+                    else:
+                        result[field_name] = str(value)
+                except Exception as field_error:
+                    print(f"Warning: Failed to convert field {field_name}: {field_error}")
+                    result[field_name] = f"conversion_error_{field_name}"
+            return result
 
 @dataclass
 class WorkflowStep:
@@ -430,35 +454,47 @@ class EnhancedClaimProcessor:
             
             # Compile results with robust JSON serialization
             try:
+                print("Starting result compilation...")
+                
                 # Safely convert extracted data
+                print("Converting extracted data to dict...")
                 try:
                     extracted_data_dict = extracted_data.to_dict()
+                    print(f"extracted_data.to_dict() successful - {len(extracted_data_dict)} fields")
                 except Exception as e:
                     print(f"Warning: extracted_data.to_dict() failed: {e}")
                     extracted_data_dict = self._safe_dataclass_to_dict(extracted_data)
+                    print(f"Fallback conversion successful - {len(extracted_data_dict)} fields")
                 
                 # Safely convert classification result
+                print("Converting classification result...")
                 try:
                     classification_dict = self._classification_to_dict(classification_result) if classification_result else None
+                    print(f"Classification conversion successful")
                 except Exception as e:
                     print(f"Warning: classification conversion failed: {e}")
                     classification_dict = None
                 
                 # Safely convert quality result
+                print("Converting quality result...")
                 try:
                     quality_dict = quality_result.to_dict() if quality_result else None
+                    print(f"Quality conversion successful")
                 except Exception as e:
                     print(f"Warning: quality_result.to_dict() failed: {e}")
                     quality_dict = None
                 
                 # Safely convert workflow steps
+                print(f"Converting {len(workflow_steps)} workflow steps...")
                 try:
                     workflow_steps_dict = [self._workflow_step_to_dict(step) for step in workflow_steps]
+                    print(f"Workflow steps conversion successful - {len(workflow_steps_dict)} steps")
                 except Exception as e:
                     print(f"Warning: workflow steps conversion failed: {e}")
                     workflow_steps_dict = []
                 
-                return {
+                print("Creating final result dictionary...")
+                final_result = {
                     'success': True,
                     'status': decision.status.value,
                     'confidence': decision.confidence,
@@ -486,11 +522,20 @@ class EnhancedClaimProcessor:
                         'skipped_steps': len([s for s in workflow_steps if s.status == "skipped"])
                     }
                 }
+                print(f"SUCCESS! Returning result with success={final_result['success']}")
+                return final_result
             except Exception as compilation_error:
                 print(f"Critical error during result compilation: {compilation_error}")
                 raise compilation_error  # Re-raise to trigger the outer exception handler
             
         except Exception as e:
+            # Enhanced error logging to capture the actual error
+            print(f"CRITICAL ERROR in enhanced processing: {str(e)}")
+            print(f"Error type: {type(e).__name__}")
+            import traceback
+            print("Full traceback:")
+            traceback.print_exc()
+            
             # Mark current step as failed if there was one in progress
             if current_step and current_step.status == "in_progress":
                 current_step.status = "failed"
@@ -505,6 +550,7 @@ class EnhancedClaimProcessor:
                 'reasons': [f"Enhanced processing error: {str(e)}"],
                 'processing_notes': "Claim requires manual review due to processing error",
                 'error': str(e),
+                'error_type': type(e).__name__,
                 'workflow_steps': [self._workflow_step_to_dict(step) for step in workflow_steps]
             }
     
