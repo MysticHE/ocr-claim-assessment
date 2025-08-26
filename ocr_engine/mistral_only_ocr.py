@@ -188,6 +188,9 @@ Translate any non-English content to English while preserving the document struc
                     page.markdown for page in response.pages if hasattr(page, 'markdown') and page.markdown
                 ])
             
+            # Clean up repetitive OCR patterns that can cause issues
+            extracted_text = self._clean_repetitive_patterns(extracted_text)
+            
             processing_time = (time.time() - start_time) * 1000
             
             # Calculate confidence and detect language
@@ -436,6 +439,53 @@ Translate any non-English content to English while preserving the document struc
         # Ensure confidence is between 0 and 1
         return max(0.0, min(1.0, confidence))
     
+    def _clean_repetitive_patterns(self, text: str) -> str:
+        """Clean up repetitive patterns that can occur in OCR processing"""
+        if not text:
+            return text
+        
+        original_length = len(text)
+        lines = text.split('\n')
+        
+        # Remove excessive repetitive "Next:" patterns
+        cleaned_lines = []
+        next_count = 0
+        max_next_repetitions = 10  # Allow up to 10 "Next:" entries
+        
+        for line in lines:
+            line_stripped = line.strip()
+            
+            # Check for repetitive "Next:" pattern
+            if line_stripped.startswith('**Next:**') or line_stripped == 'Next:':
+                next_count += 1
+                if next_count <= max_next_repetitions:
+                    cleaned_lines.append(line)
+                # Skip excessive repetitions
+                continue
+            else:
+                # Reset counter when we encounter non-Next content
+                next_count = 0
+                cleaned_lines.append(line)
+        
+        # Additional cleanup for other repetitive patterns
+        cleaned_text = '\n'.join(cleaned_lines)
+        
+        # Remove excessive repeated numbers (like 291. 292. 293. etc.)
+        import re
+        # Remove patterns like "291. **Next:**" repeated many times
+        cleaned_text = re.sub(r'(\d+\.\s*\*\*Next:\*\*\s*\n?){10,}', 
+                             '**[Multiple navigation steps omitted for brevity]**\n', 
+                             cleaned_text)
+        
+        # Remove excessive whitespace
+        cleaned_text = re.sub(r'\n\s*\n\s*\n', '\n\n', cleaned_text)
+        
+        final_length = len(cleaned_text)
+        if original_length > final_length * 1.5:  # Significant reduction
+            print(f"   OCR cleaning: {original_length} -> {final_length} chars ({((original_length - final_length) / original_length * 100):.1f}% reduction)")
+        
+        return cleaned_text
+
     def _detect_language(self, text: str) -> str:
         """Simple language detection based on text characteristics"""
         if not text:
