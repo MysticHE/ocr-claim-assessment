@@ -428,35 +428,67 @@ class EnhancedClaimProcessor:
             print(f"   Workflow steps completed: {len([s for s in workflow_steps if s.status == 'completed'])}/{len(workflow_steps)}")
             print(f"   Decision status: {decision.status.value}")
             
-            # Compile results
-            return {
-                'success': True,
-                'status': decision.status.value,
-                'confidence': decision.confidence,
-                'amount': decision.amount,
-                'reasons': decision.reasons,
-                'processing_notes': decision.processing_notes,
-                'total_processing_time_ms': total_processing_time,
+            # Compile results with robust JSON serialization
+            try:
+                # Safely convert extracted data
+                try:
+                    extracted_data_dict = extracted_data.to_dict()
+                except Exception as e:
+                    print(f"Warning: extracted_data.to_dict() failed: {e}")
+                    extracted_data_dict = self._safe_dataclass_to_dict(extracted_data)
                 
-                # Enhanced data
-                'extracted_data': extracted_data.to_dict(),
-                'validation_issues': validation_issues,
-                'fraud_findings': fraud_findings,
-                'workflow_steps': [self._workflow_step_to_dict(step) for step in workflow_steps],
+                # Safely convert classification result
+                try:
+                    classification_dict = self._classification_to_dict(classification_result) if classification_result else None
+                except Exception as e:
+                    print(f"Warning: classification conversion failed: {e}")
+                    classification_dict = None
                 
-                # AI Analysis results
-                'document_classification': self._classification_to_dict(classification_result) if classification_result else None,
-                'quality_assessment': quality_result.to_dict() if quality_result else None,
-                'ai_engines_used': [step.ai_engine_used for step in workflow_steps if step.ai_engine_used],
+                # Safely convert quality result
+                try:
+                    quality_dict = quality_result.to_dict() if quality_result else None
+                except Exception as e:
+                    print(f"Warning: quality_result.to_dict() failed: {e}")
+                    quality_dict = None
                 
-                # Workflow summary
-                'workflow_completion': {
-                    'total_steps': len(workflow_steps),
-                    'completed_steps': len([s for s in workflow_steps if s.status == "completed"]),
-                    'failed_steps': len([s for s in workflow_steps if s.status == "failed"]),
-                    'skipped_steps': len([s for s in workflow_steps if s.status == "skipped"])
+                # Safely convert workflow steps
+                try:
+                    workflow_steps_dict = [self._workflow_step_to_dict(step) for step in workflow_steps]
+                except Exception as e:
+                    print(f"Warning: workflow steps conversion failed: {e}")
+                    workflow_steps_dict = []
+                
+                return {
+                    'success': True,
+                    'status': decision.status.value,
+                    'confidence': decision.confidence,
+                    'amount': decision.amount,
+                    'reasons': decision.reasons,
+                    'processing_notes': decision.processing_notes,
+                    'total_processing_time_ms': total_processing_time,
+                    
+                    # Enhanced data
+                    'extracted_data': extracted_data_dict,
+                    'validation_issues': validation_issues,
+                    'fraud_findings': fraud_findings,
+                    'workflow_steps': workflow_steps_dict,
+                    
+                    # AI Analysis results
+                    'document_classification': classification_dict,
+                    'quality_assessment': quality_dict,
+                    'ai_engines_used': [step.ai_engine_used for step in workflow_steps if step.ai_engine_used],
+                    
+                    # Workflow summary
+                    'workflow_completion': {
+                        'total_steps': len(workflow_steps),
+                        'completed_steps': len([s for s in workflow_steps if s.status == "completed"]),
+                        'failed_steps': len([s for s in workflow_steps if s.status == "failed"]),
+                        'skipped_steps': len([s for s in workflow_steps if s.status == "skipped"])
+                    }
                 }
-            }
+            except Exception as compilation_error:
+                print(f"Critical error during result compilation: {compilation_error}")
+                raise compilation_error  # Re-raise to trigger the outer exception handler
             
         except Exception as e:
             # Mark current step as failed if there was one in progress
@@ -1134,6 +1166,40 @@ class EnhancedClaimProcessor:
         )
     
     # Completeness score calculation removed - no longer used in simplified logic
+    
+    def _safe_dataclass_to_dict(self, obj) -> Dict[str, Any]:
+        """Safely convert dataclass to dictionary with JSON serialization handling"""
+        try:
+            result = {}
+            
+            # Get all fields from the dataclass
+            if hasattr(obj, '__dataclass_fields__'):
+                for field_name in obj.__dataclass_fields__:
+                    value = getattr(obj, field_name, None)
+                    
+                    # Handle different value types
+                    if value is None:
+                        result[field_name] = None
+                    elif isinstance(value, (str, int, float, bool)):
+                        result[field_name] = value
+                    elif isinstance(value, list):
+                        result[field_name] = list(value)  # Create a copy
+                    elif isinstance(value, dict):
+                        result[field_name] = dict(value)  # Create a copy
+                    elif hasattr(value, 'isoformat'):  # datetime objects
+                        result[field_name] = value.isoformat()
+                    else:
+                        # Convert to string as fallback
+                        result[field_name] = str(value)
+            else:
+                # Fallback: convert to string representation
+                result = {'data': str(obj)}
+                
+            return result
+            
+        except Exception as e:
+            print(f"Error in _safe_dataclass_to_dict: {e}")
+            return {'conversion_error': str(e)}
     
     def _workflow_step_to_dict(self, step: WorkflowStep) -> Dict[str, Any]:
         """Convert workflow step to dictionary"""
