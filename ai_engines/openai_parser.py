@@ -256,7 +256,7 @@ Rules:
             prompt = self.extraction_prompt.format(
                 document_type=document_type or "unknown",
                 quality_score=quality_score,
-                ocr_text=self._prepare_text_for_extraction(ocr_text)  # Smart text chunking
+                ocr_text=ocr_text  # Full document content for complete analysis
             )
             
             print(f"Sending OCR text to OpenAI GPT-4o-mini for intelligent extraction...")
@@ -276,7 +276,7 @@ Rules:
                         "content": prompt
                     }
                 ],
-                max_tokens=2000,  # Increased for complex extractions
+                max_tokens=4000,  # Increased for full document analysis
                 temperature=0.1,
                 max_retries=3
             )
@@ -397,7 +397,7 @@ Rules:
         # Perform context-aware extraction
         return self.extract_structured_data(ocr_text, document_type, quality_score)
     
-    def _call_openai_with_retry(self, messages: List[Dict], max_tokens: int = 2000, 
+    def _call_openai_with_retry(self, messages: List[Dict], max_tokens: int = 4000, 
                                   temperature: float = 0.1, max_retries: int = 3) -> Any:
         """Call OpenAI API with exponential backoff retry logic"""
         import time
@@ -431,49 +431,6 @@ Rules:
         
         raise Exception("All retry attempts failed")
     
-    def _prepare_text_for_extraction(self, ocr_text: str, max_chars: int = 12000) -> str:
-        """Smart text preparation for OpenAI extraction with priority sections"""
-        if len(ocr_text) <= max_chars:
-            return ocr_text
-        
-        print(f"   Text too long ({len(ocr_text)} chars), applying smart chunking...")
-        
-        # Priority keywords for medical/insurance documents
-        priority_keywords = [
-            'patient', 'total', 'amount', 'date', 'diagnosis', 'provider', 'doctor',
-            'clinic', 'hospital', 'claim', 'policy', 'invoice', 'receipt', 'bill',
-            'treatment', 'consultation', 'medication', 'service', 'fee', 'charge',
-            'sgd', 'usd', 'myr', '$', 'dr.', 'nric', 'ic', 'ref', 'no:'
-        ]
-        
-        # Split text into sections
-        lines = ocr_text.split('\n')
-        priority_lines = []
-        other_lines = []
-        
-        for line in lines:
-            line_lower = line.lower()
-            if any(keyword in line_lower for keyword in priority_keywords):
-                priority_lines.append(line)
-            else:
-                other_lines.append(line)
-        
-        # Build optimized text
-        result_lines = priority_lines
-        current_length = sum(len(line) for line in priority_lines)
-        
-        # Add other lines until we reach the limit
-        for line in other_lines:
-            if current_length + len(line) + 1 <= max_chars:
-                result_lines.append(line)
-                current_length += len(line) + 1
-            else:
-                break
-        
-        optimized_text = '\n'.join(result_lines)
-        print(f"   Smart chunking: {len(ocr_text)} → {len(optimized_text)} chars ({len(priority_lines)} priority lines)")
-        
-        return optimized_text
 
     def validate_extraction_result(self, result: ExtractionResult) -> Tuple[bool, List[str]]:
         """
