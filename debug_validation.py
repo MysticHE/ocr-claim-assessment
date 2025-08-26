@@ -22,7 +22,7 @@ def test_validation_debug():
     test_data.total_amount = 100.0
     test_data.amounts = [100.0]
     test_data.document_type = "receipt"
-    test_data.document_classification_confidence = 0.1  # Very low confidence
+    # test_data.document_classification_confidence removed - no longer used
     test_data.quality_acceptable = False  # Poor quality
     
     print(f"\nTest data:")
@@ -31,7 +31,7 @@ def test_validation_debug():
     print(f"  Dates: {test_data.treatment_dates}")
     print(f"  Amount: {test_data.total_amount}")
     print(f"  Document type: {test_data.document_type}")
-    print(f"  Classification confidence: {test_data.document_classification_confidence}")
+    print(f"  Classification confidence: removed (no longer used)")
     print(f"  Quality acceptable: {test_data.quality_acceptable}")
     
     # Test validation

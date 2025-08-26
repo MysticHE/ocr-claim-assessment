@@ -51,7 +51,6 @@ class EnhancedClaimData:
     
     # AI Analysis Results
     document_type: Optional[str] = None
-    document_classification_confidence: float = 0.0
     document_quality_score: float = 0.0
     quality_issues: List[str] = None
     quality_acceptable: bool = True
@@ -59,7 +58,6 @@ class EnhancedClaimData:
     # Workflow tracking
     processing_stage: str = "initiated"
     workflow_steps_completed: List[str] = None
-    ai_confidence_scores: Dict[str, float] = None
     
     def __post_init__(self):
         if self.diagnosis_codes is None:
@@ -76,8 +74,6 @@ class EnhancedClaimData:
             self.quality_issues = []
         if self.workflow_steps_completed is None:
             self.workflow_steps_completed = []
-        if self.ai_confidence_scores is None:
-            self.ai_confidence_scores = {}
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for JSON serialization"""
@@ -91,7 +87,6 @@ class WorkflowStep:
     start_time: Optional[datetime] = None
     end_time: Optional[datetime] = None
     ai_engine_used: Optional[str] = None
-    confidence_score: Optional[float] = None
     output_summary: Optional[str] = None
     issues_found: List[str] = None
     
@@ -282,7 +277,6 @@ class EnhancedClaimProcessor:
                 quality_result = self.quality_assessor.assess_document_quality(
                     image_path, ocr_result.get('confidence')
                 )
-                current_step.confidence_score = quality_result.quality_score.overall_score
                 current_step.output_summary = f"Quality score: {quality_result.quality_score.overall_score:.2f}"
                 current_step.issues_found = quality_result.recommendations
                 current_step.status = "completed"
@@ -290,7 +284,6 @@ class EnhancedClaimProcessor:
                 # Simple OCR-confidence based quality assessment fallback
                 ocr_confidence = ocr_result.get('confidence', 0.5)
                 quality_score = max(0.4, ocr_confidence)  # Minimum threshold
-                current_step.confidence_score = quality_score
                 current_step.output_summary = f"Simple quality assessment: {quality_score:.2f} (based on OCR confidence)"
                 current_step.issues_found = ["Limited quality assessment in fallback mode"]
                 current_step.status = "completed"
@@ -318,14 +311,12 @@ class EnhancedClaimProcessor:
                 # Use Mistral result if confidence is high enough
                 if mistral_result.confidence >= 0.5:  # Require at least 50% confidence
                     classification_result = mistral_result
-                    current_step.confidence_score = mistral_result.confidence
                     current_step.output_summary = f"Mistral classified as: {mistral_result.document_type.value}"
                     current_step.ai_engine_used = "mistral_ai"
                     current_step.status = "completed"
                 else:
                     # Mistral confidence too low, fall back to enhanced classification
                     doc_type = self._simple_document_classification(ocr_result.get('text', ''))
-                    current_step.confidence_score = 0.75  # Higher confidence for enhanced classification
                     current_step.output_summary = f"Enhanced classification: {doc_type} (Mistral confidence too low: {mistral_result.confidence:.2f})"
                     current_step.ai_engine_used = "enhanced_rules"
                     current_step.status = "completed"
@@ -337,7 +328,6 @@ class EnhancedClaimProcessor:
             else:
                 # Mistral not available, use enhanced classification
                 doc_type = self._simple_document_classification(ocr_result.get('text', ''))
-                current_step.confidence_score = 0.7
                 current_step.output_summary = f"Enhanced classification: {doc_type} (Mistral not available)"
                 current_step.ai_engine_used = "enhanced_rules"
                 current_step.status = "completed"
@@ -357,7 +347,6 @@ class EnhancedClaimProcessor:
                 start_time=datetime.now(),
                 end_time=datetime.now(),
                 ai_engine_used=ocr_result.get('engine', 'hybrid'),
-                confidence_score=ocr_result.get('confidence', 0.0),
                 output_summary=f"Extracted {len(ocr_result.get('text', '').split())} words"
             ))
             
@@ -426,8 +415,7 @@ class EnhancedClaimProcessor:
                 quality_result, classification_result, ocr_result.get('confidence', 0.0)
             )
             
-            current_step.confidence_score = decision.confidence
-            current_step.output_summary = f"Decision: {decision.status.value} (confidence: {decision.confidence:.2f})"
+            current_step.output_summary = f"Decision: {decision.status.value}"
             current_step.status = "completed"
             current_step.end_time = datetime.now()
             workflow_steps.append(current_step)
@@ -439,7 +427,6 @@ class EnhancedClaimProcessor:
             print(f"   Total processing time: {total_processing_time}ms")
             print(f"   Workflow steps completed: {len([s for s in workflow_steps if s.status == 'completed'])}/{len(workflow_steps)}")
             print(f"   Decision status: {decision.status.value}")
-            print(f"   Decision confidence: {decision.confidence}")
             
             # Compile results
             return {
@@ -528,13 +515,7 @@ class EnhancedClaimProcessor:
                     extracted.document_date = ai_data.get('document_date')
                     extracted.line_items = ai_data.get('line_items', [])
                     
-                    # Store OpenAI insights
-                    extracted.ai_confidence_scores = {
-                        'ocr_confidence': ocr_result.get('confidence', 0.0),
-                        'extraction_confidence': openai_result.confidence,
-                        'openai_processing_time': openai_result.processing_time_ms,
-                        'extraction_method': 'openai_gpt4o_mini'
-                    }
+                    # AI confidence scores removed for simplified processing
                     
                     # Add document insights from OpenAI
                     if 'document_insights' in ai_data:
@@ -599,11 +580,7 @@ class EnhancedClaimProcessor:
             extracted.quality_issues = [issue.value for issue in quality_result.issues_detected]
             extracted.quality_acceptable = quality_result.is_acceptable
         
-        # Enhance AI confidence scores with other engine results
-        if 'classification_confidence' not in extracted.ai_confidence_scores:
-            extracted.ai_confidence_scores['classification_confidence'] = classification_result.confidence if classification_result else 0.0
-        if 'quality_score' not in extracted.ai_confidence_scores:
-            extracted.ai_confidence_scores['quality_score'] = quality_result.quality_score.overall_score if quality_result else 0.5
+        # AI confidence scores removed for simplified processing
         
         # Post-processing: Fill missing visit_dates with document_date or treatment_dates
         if not extracted.visit_dates and extracted.document_date:
@@ -1110,27 +1087,7 @@ class EnhancedClaimProcessor:
     def make_enhanced_decision(self, data: EnhancedClaimData, validation_issues: List[str],
                              fraud_findings: List[str], quality_result=None,
                              classification_result=None, ocr_confidence: float = 0.0) -> ClaimDecision:
-        """Make enhanced claim decision with AI inputs"""
-        
-        # Calculate enhanced confidence score
-        base_confidence = ocr_confidence * 0.3
-        
-        # Add classification confidence
-        if classification_result:
-            base_confidence += classification_result.confidence * 0.2
-        
-        # Add quality score
-        if quality_result:
-            base_confidence += quality_result.quality_score.overall_score * 0.3
-        
-        # Add data completeness score
-        completeness_score = self._calculate_data_completeness_score(data)
-        base_confidence += completeness_score * 0.2
-        
-        # Cap at 1.0
-        base_confidence = min(1.0, base_confidence)
-        
-        reasons = []
+        """Simplified claim decision making without confidence calculations"""
         
         # PRIORITY 1: Fraud-based rejection (highest priority)
         if fraud_findings:
@@ -1139,7 +1096,7 @@ class EnhancedClaimProcessor:
             if duplicate_findings:
                 return ClaimDecision(
                     status=ClaimStatus.REJECTED,
-                    confidence=base_confidence * 0.9,  # High confidence in duplicate detection
+                    confidence=0.9,  # Static confidence for clarity
                     amount=data.total_amount or 0,
                     reasons=duplicate_findings,
                     processing_notes="Claim rejected due to duplicate submission detected"
@@ -1148,104 +1105,35 @@ class EnhancedClaimProcessor:
                 # Other fraud findings go to review
                 return ClaimDecision(
                     status=ClaimStatus.REVIEW,
-                    confidence=base_confidence * 0.8,
+                    confidence=0.8,  # Static confidence for clarity
                     amount=data.total_amount or 0,
                     reasons=fraud_findings,
                     processing_notes="Claim requires manual review due to fraud indicators"
                 )
         
-        # PRIORITY 2: Validation issues
+        # PRIORITY 2: Validation issues (only critical field validation)
         if validation_issues:
             return ClaimDecision(
                 status=ClaimStatus.REJECTED,
-                confidence=base_confidence,
+                confidence=0.9,  # High confidence in validation logic
                 amount=data.total_amount or 0,
                 reasons=validation_issues,
-                processing_notes="Claim rejected due to validation failures in enhanced processing"
+                processing_notes="Claim rejected due to missing required information"
             )
         
-        # PRIORITY 3: Quality-based rejection
-        if quality_result and not quality_result.is_acceptable:
-            return ClaimDecision(
-                status=ClaimStatus.REJECTED,
-                confidence=base_confidence * 0.7,
-                amount=data.total_amount or 0,
-                reasons=["Document quality below acceptable threshold"] + quality_result.recommendations[:3],
-                processing_notes="Claim rejected due to poor document quality"
-            )
-        
-        # Continue with approval/review logic
-        
-        # Document type specific logic
-        if classification_result and classification_result.confidence < 0.5:
-            return ClaimDecision(
-                status=ClaimStatus.REVIEW,
-                confidence=base_confidence * 0.9,
-                amount=data.total_amount or 0,
-                reasons=["Uncertain document classification requires review"],
-                processing_notes="Manual review required due to unclear document type"
-            )
-        
-        # Simplified approval logic - no amount limits
+        # All quality checks and confidence thresholds removed - approve clean claims
         claim_amount = data.total_amount or 0
         
-        # Approve based on AI confidence only (no amount restrictions)
-        if base_confidence >= 0.9:
-            reasons.append("High confidence claim approved by AI analysis")
-            return ClaimDecision(
-                status=ClaimStatus.APPROVED,
-                confidence=base_confidence,
-                amount=claim_amount,
-                reasons=reasons,
-                processing_notes="Approved based on comprehensive AI analysis"
-            )
-        elif base_confidence >= 0.8:
-            reasons.append("Good confidence claim approved by AI analysis")
-            return ClaimDecision(
-                status=ClaimStatus.APPROVED,
-                confidence=base_confidence,
-                amount=claim_amount,
-                reasons=reasons,
-                processing_notes="Auto-approved by enhanced AI processing"
-            )
-        
-        # Lower confidence goes to review
-        reasons.append("Enhanced processing suggests manual review")
+        # Simplified approval: if no fraud and no validation issues, approve
         return ClaimDecision(
-            status=ClaimStatus.REVIEW,
-            confidence=base_confidence,
+            status=ClaimStatus.APPROVED,
+            confidence=0.85,  # Static confidence for approved claims
             amount=claim_amount,
-            reasons=reasons,
-            processing_notes="Manual review recommended due to lower AI confidence"
+            reasons=["Clean claim with all required information"],
+            processing_notes="Approved - passed fraud detection and validation checks"
         )
     
-    def _calculate_data_completeness_score(self, data: EnhancedClaimData) -> float:
-        """Calculate completeness score based on extracted data"""
-        total_fields = 10  # Total expected fields
-        populated_fields = 0
-        
-        if data.patient_name:
-            populated_fields += 1
-        if data.patient_id:
-            populated_fields += 1
-        if data.policy_number:
-            populated_fields += 1
-        if data.provider_name:
-            populated_fields += 1
-        if data.treatment_dates:
-            populated_fields += 1
-        if data.amounts:
-            populated_fields += 1
-        if data.diagnosis_codes:
-            populated_fields += 1
-        if data.claim_number:
-            populated_fields += 1
-        if data.currency:
-            populated_fields += 1
-        if data.total_amount:
-            populated_fields += 1
-        
-        return populated_fields / total_fields
+    # Completeness score calculation removed - no longer used in simplified logic
     
     def _workflow_step_to_dict(self, step: WorkflowStep) -> Dict[str, Any]:
         """Convert workflow step to dictionary"""
@@ -1255,7 +1143,6 @@ class EnhancedClaimProcessor:
             'start_time': step.start_time.isoformat() if step.start_time else None,
             'end_time': step.end_time.isoformat() if step.end_time else None,
             'ai_engine_used': step.ai_engine_used,
-            'confidence_score': step.confidence_score,
             'output_summary': step.output_summary,
             'issues_found': step.issues_found or [],
             'duration_ms': int((step.end_time - step.start_time).total_seconds() * 1000) if step.start_time and step.end_time else None
