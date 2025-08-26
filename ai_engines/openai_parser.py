@@ -256,7 +256,7 @@ Rules:
             prompt = self.extraction_prompt.format(
                 document_type=document_type or "unknown",
                 quality_score=quality_score,
-                ocr_text=ocr_text[:8000]  # Limit input size for cost efficiency
+                ocr_text=self._prepare_text_for_extraction(ocr_text)  # Smart text chunking
             )
             
             print(f"Sending OCR text to OpenAI GPT-4o-mini for intelligent extraction...")
@@ -264,9 +264,8 @@ Rules:
             print(f"   Quality score: {quality_score}")
             print(f"   Text length: {len(ocr_text)} characters")
             
-            # Call OpenAI API
-            response = self.client.chat.completions.create(
-                model="gpt-4o-mini",
+            # Call OpenAI API with retry logic and increased limits
+            response = self._call_openai_with_retry(
                 messages=[
                     {
                         "role": "system", 
@@ -277,9 +276,9 @@ Rules:
                         "content": prompt
                     }
                 ],
-                max_tokens=1000,
-                temperature=0.1,  # Low temperature for consistent extraction
-                timeout=15
+                max_tokens=2000,  # Increased for complex extractions
+                temperature=0.1,
+                max_retries=3
             )
             
             # Parse response
@@ -398,6 +397,84 @@ Rules:
         # Perform context-aware extraction
         return self.extract_structured_data(ocr_text, document_type, quality_score)
     
+    def _call_openai_with_retry(self, messages: List[Dict], max_tokens: int = 2000, 
+                                  temperature: float = 0.1, max_retries: int = 3) -> Any:
+        """Call OpenAI API with exponential backoff retry logic"""
+        import time
+        
+        for attempt in range(max_retries):
+            try:
+                timeout = 30 + (attempt * 15)  # 30s, 45s, 60s timeouts
+                print(f"   OpenAI API call attempt {attempt + 1}/{max_retries} (timeout: {timeout}s)")
+                
+                response = self.client.chat.completions.create(
+                    model="gpt-4o-mini",
+                    messages=messages,
+                    max_tokens=max_tokens,
+                    temperature=temperature,
+                    timeout=timeout
+                )
+                
+                return response
+                
+            except Exception as e:
+                error_msg = str(e)
+                print(f"   Attempt {attempt + 1} failed: {error_msg}")
+                
+                if attempt == max_retries - 1:
+                    raise e  # Re-raise on final attempt
+                
+                # Exponential backoff
+                backoff_delay = (2 ** attempt) + 1  # 1s, 3s, 7s
+                print(f"   Retrying in {backoff_delay} seconds...")
+                time.sleep(backoff_delay)
+        
+        raise Exception("All retry attempts failed")
+    
+    def _prepare_text_for_extraction(self, ocr_text: str, max_chars: int = 12000) -> str:
+        """Smart text preparation for OpenAI extraction with priority sections"""
+        if len(ocr_text) <= max_chars:
+            return ocr_text
+        
+        print(f"   Text too long ({len(ocr_text)} chars), applying smart chunking...")
+        
+        # Priority keywords for medical/insurance documents
+        priority_keywords = [
+            'patient', 'total', 'amount', 'date', 'diagnosis', 'provider', 'doctor',
+            'clinic', 'hospital', 'claim', 'policy', 'invoice', 'receipt', 'bill',
+            'treatment', 'consultation', 'medication', 'service', 'fee', 'charge',
+            'sgd', 'usd', 'myr', '$', 'dr.', 'nric', 'ic', 'ref', 'no:'
+        ]
+        
+        # Split text into sections
+        lines = ocr_text.split('\n')
+        priority_lines = []
+        other_lines = []
+        
+        for line in lines:
+            line_lower = line.lower()
+            if any(keyword in line_lower for keyword in priority_keywords):
+                priority_lines.append(line)
+            else:
+                other_lines.append(line)
+        
+        # Build optimized text
+        result_lines = priority_lines
+        current_length = sum(len(line) for line in priority_lines)
+        
+        # Add other lines until we reach the limit
+        for line in other_lines:
+            if current_length + len(line) + 1 <= max_chars:
+                result_lines.append(line)
+                current_length += len(line) + 1
+            else:
+                break
+        
+        optimized_text = '\n'.join(result_lines)
+        print(f"   Smart chunking: {len(ocr_text)} → {len(optimized_text)} chars ({len(priority_lines)} priority lines)")
+        
+        return optimized_text
+
     def validate_extraction_result(self, result: ExtractionResult) -> Tuple[bool, List[str]]:
         """
         Validate the extraction result for completeness and consistency
@@ -443,3 +520,46 @@ Rules:
             issues.append(f"Low extraction confidence: {result.confidence:.2f}")
         
         return len(issues) == 0, issues
+    
+    def test_openai_connection(self) -> Dict[str, Any]:
+        """Test OpenAI connection with a simple request"""
+        if not self.available:
+            return {
+                'status': 'unavailable',
+                'error': 'OpenAI parser not configured - check API key',
+                'timestamp': time.time()
+            }
+        
+        try:
+            start_time = time.time()
+            
+            # Simple test request
+            response = self.client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": "You are a test assistant."},
+                    {"role": "user", "content": "Return the JSON: {\"test\": \"success\"}"}
+                ],
+                max_tokens=50,
+                temperature=0.0,
+                timeout=10
+            )
+            
+            response_time = int((time.time() - start_time) * 1000)
+            
+            return {
+                'status': 'healthy',
+                'response_time_ms': response_time,
+                'model': 'gpt-4o-mini',
+                'test_successful': True,
+                'timestamp': time.time()
+            }
+            
+        except Exception as e:
+            error_msg = str(e)
+            return {
+                'status': 'unhealthy',
+                'error': error_msg,
+                'error_type': 'timeout' if 'timeout' in error_msg.lower() else 'api_error',
+                'timestamp': time.time()
+            }

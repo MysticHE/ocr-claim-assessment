@@ -684,7 +684,7 @@ def health_check():
         # Check OpenAI parser (optional service)
         if enhanced_claim_processor and enhanced_claim_processor.openai_parser:
             try:
-                openai_health = enhanced_claim_processor.openai_parser.health_check()
+                openai_health = enhanced_claim_processor.openai_parser.test_openai_connection()
                 health_status['services']['openai_parser'] = openai_health
                 # Note: OpenAI failure doesn't mark overall system as unhealthy since it's optional
             except Exception as e:
