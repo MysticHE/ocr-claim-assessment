@@ -64,12 +64,11 @@ Extract the following information and return as valid JSON only (no additional t
   "patient_name": "Full patient name or null",
   "patient_id": "Patient ID/NRIC/IC number or null", 
   "policy_number": "Insurance policy number or null",
-  "claim_number": "Claim reference number or null",
+  "claim_number": "Claim/receipt/invoice/reference number or null",
   "provider_name": "Healthcare provider/clinic/hospital name or null",
   "diagnosis_codes": ["List of ICD-10 codes found or empty array"],
   "treatment_dates": ["YYYY-MM-DD format dates or empty array"],
-  "visit_dates": ["YYYY-MM-DD format visit/appointment dates or empty array"],
-  "service_dates": ["YYYY-MM-DD dates when services were rendered/provided or empty array"],
+  "visit_dates": ["YYYY-MM-DD format date recorded/documented or empty array"],
   "document_date": "YYYY-MM-DD format document creation/submission date or null",
   "line_items": [
     {{
@@ -109,22 +108,25 @@ Special Instructions for Document Classification and Extraction:
 
 Date Extraction Guidelines:
 - treatment_dates: Dates when medical services were provided (clinical treatment dates)
-- visit_dates: Dates of patient appointments/consultations with healthcare providers
-- service_dates: Dates when billable services were rendered (most important for billing)
-- document_date: When the document was created/issued (invoice date, bill date, admission date, etc.)
+- visit_dates: Date when this record/document was created or recorded (most important)
+- document_date: When the document was issued/created (invoice date, bill date, admission date, etc.)
 
-Date Extraction Priority & Intelligence:
-1. **Service Date** (highest priority): Look for "Service Date:", "Date of Service:", dates on invoice lines
-2. **Treatment Date**: Look for "Treatment Date:", "Date of Treatment:", clinical service dates
-3. **Visit Date**: Look for "Visit Date:", "Appointment Date:", "Consultation Date:"
-4. **Document Date**: Look for "Invoice Date:", "Bill Date:", "Date:", "Admission:", "Discharge:"
+Date Extraction Intelligence:
+1. **Visit Date (Date Recorded)**: Look for document dates, record dates, invoice dates, service dates
+2. **Treatment Date**: Look for actual treatment/procedure dates if different from document date
+3. **Document Date**: Look for "Invoice Date:", "Bill Date:", "Date:", "Admission:", "Discharge:"
 
 Smart Date Detection:
-- Invoice documents: prioritize invoice date as document_date, service dates as service_dates
-- Medical records: prioritize treatment dates and visit dates
-- Hospital bills: look for admission/discharge dates, service dates for each line item
-- Consultation notes: focus on visit dates and treatment dates
-- Extract ALL relevant dates found, don't limit to just one type
+- For invoices/bills: Use invoice date as visit_dates (date recorded)
+- For medical records: Use record creation date as visit_dates 
+- For hospital bills: Use billing date as visit_dates, actual service dates as treatment_dates
+- Prioritize the date when the financial record was created over clinical dates
+
+Claim Number Extraction Guidelines:
+- Look for various number formats: "Claim No:", "Receipt No:", "Invoice No:", "Reference No:"
+- Check for patterns: "REF:", "No:", "#", "Claim #", "Receipt #", "Invoice #"
+- Look in headers, footers, and billing sections
+- Common formats: alphanumeric codes, sequential numbers, reference codes
 
 Provider Name Extraction Guidelines:
 - Look for hospital names: "Singapore General Hospital", "Mount Elizabeth Hospital", "Tan Tock Seng Hospital"

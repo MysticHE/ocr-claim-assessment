@@ -45,8 +45,7 @@ class EnhancedClaimData:
     currency: str = 'SGD'
     
     # New fields for enhanced extraction
-    visit_dates: List[str] = None
-    service_dates: List[str] = None  # Date of service/treatment as indicated in document
+    visit_dates: List[str] = None  # Now represents "Date Recorded" - when the record/document was created
     document_date: Optional[str] = None  # Date document was created/issued
     line_items: List[Dict[str, Any]] = None
     
@@ -67,8 +66,6 @@ class EnhancedClaimData:
             self.treatment_dates = []
         if self.visit_dates is None:
             self.visit_dates = []
-        if self.service_dates is None:
-            self.service_dates = []
         if self.line_items is None:
             self.line_items = []
         if self.amounts is None:
@@ -573,8 +570,7 @@ class EnhancedClaimProcessor:
                     extracted.currency = ai_data.get('currency', 'SGD')
                     
                     # Map new fields from OpenAI
-                    extracted.visit_dates = ai_data.get('visit_dates', [])
-                    extracted.service_dates = ai_data.get('service_dates', [])
+                    extracted.visit_dates = ai_data.get('visit_dates', [])  # Now "Date Recorded"
                     extracted.document_date = ai_data.get('document_date')
                     extracted.line_items = ai_data.get('line_items', [])
                     
@@ -645,21 +641,12 @@ class EnhancedClaimProcessor:
         
         # AI confidence scores removed for simplified processing
         
-        # Post-processing: Fill missing dates with intelligent fallbacks
-        # Service dates are most important (date of actual service/treatment)
-        if not extracted.service_dates:
+        # Post-processing: Fill missing visit_dates (Date Recorded) with fallbacks
+        if not extracted.visit_dates:
             if extracted.treatment_dates:
-                extracted.service_dates = extracted.treatment_dates
-            elif extracted.visit_dates:
-                extracted.service_dates = extracted.visit_dates
+                extracted.visit_dates = extracted.treatment_dates
             elif extracted.document_date:
-                extracted.service_dates = [extracted.document_date]
-        
-        # Fill visit_dates if missing
-        if not extracted.visit_dates and extracted.service_dates:
-            extracted.visit_dates = extracted.service_dates
-        elif not extracted.visit_dates and extracted.document_date:
-            extracted.visit_dates = [extracted.document_date]
+                extracted.visit_dates = [extracted.document_date]
         
         # Set processing stage
         extracted.processing_stage = "data_extracted"
@@ -677,9 +664,8 @@ class EnhancedClaimProcessor:
         if not data.provider_name:
             issues.append("Missing provider name")
         
-        # Check for document date - can be service date, treatment date, visit date, or document date
+        # Check for document date - can be treatment date, visit date (date recorded), or document date
         document_date_available = bool(
-            data.service_dates or
             data.treatment_dates or 
             data.visit_dates or 
             data.document_date or
@@ -700,12 +686,10 @@ class EnhancedClaimProcessor:
             # Map document requirements to extracted data fields
             field_mapping = {
                 'amount': data.total_amount or (data.amounts and data.amounts[0]),
-                'date': (data.service_dates and data.service_dates[0]) or
-                       (data.treatment_dates and data.treatment_dates[0]) or 
+                'date': (data.treatment_dates and data.treatment_dates[0]) or 
                        (data.visit_dates and data.visit_dates[0]) or
                        data.document_date,
-                'document_date': (data.service_dates and data.service_dates[0]) or
-                               (data.treatment_dates and data.treatment_dates[0]) or 
+                'document_date': (data.treatment_dates and data.treatment_dates[0]) or 
                                (data.visit_dates and data.visit_dates[0]) or
                                data.document_date,
                 'patient_name': data.patient_name,
@@ -728,33 +712,10 @@ class EnhancedClaimProcessor:
     
     def enhanced_fraud_detection(self, ocr_result: Dict[str, Any], 
                                data: EnhancedClaimData) -> List[str]:
-        """Enhanced fraud detection with detailed, user-friendly reasons"""
+        """Simplified fraud detection - duplicate claims only"""
         suspicious_findings = []
         
-        # Disable verbose logging in production to prevent timeouts
-        debug_mode = False  # Temporarily disabled to fix production timeout
-        
-        # 1. Pattern-based text detection
-        text = ocr_result.get('text', '').lower()
-        pattern_findings = []
-        for pattern in self.rules['suspicious_patterns']:
-            if re.search(pattern, text, re.IGNORECASE):
-                # Convert regex patterns to user-friendly descriptions
-                if 'fraud|fake|false' in pattern:
-                    pattern_findings.append("Document contains suspicious keywords (fraud, fake, false)")
-                elif 'duplicate|copy|photocopy' in pattern:
-                    pattern_findings.append("Document contains duplication keywords (copy, duplicate, photocopy)")
-                elif 'altered|modified|changed' in pattern:
-                    pattern_findings.append("Document contains alteration keywords (altered, modified, changed)")
-                else:
-                    pattern_findings.append(f"Suspicious text pattern detected: {pattern}")
-        
-        if pattern_findings:
-            if debug_mode:
-                print(f"   Text analysis: Found {len(pattern_findings)} suspicious patterns")
-            suspicious_findings.extend(pattern_findings)
-        
-        # 2. Database duplicate detection
+        # Only check for duplicate submissions
         if self.rules['duplicate_check_enabled']:
             duplicate_result = self._check_duplicate_claim(data)
             if duplicate_result:
@@ -764,61 +725,11 @@ class EnhancedClaimProcessor:
             else:
                 print("   No duplicates found in database")
         
-        # 3. Document quality-based fraud indicators
-        quality_issues_found = []
-        if data.quality_issues:
-            quality_fraud_mapping = {
-                'compression_artifacts': 'IMAGE QUALITY: Document has compression artifacts that may indicate digital manipulation',
-                'overexposed': 'IMAGE QUALITY: Document is overexposed which may indicate photo editing',
-                'underexposed': 'IMAGE QUALITY: Document is underexposed which may indicate poor scanning conditions',
-                'partial_visibility': 'IMAGE QUALITY: Parts of the document are not visible, potential tampering',
-                'skewed': 'IMAGE QUALITY: Document appears skewed or rotated unusually',
-                'low_resolution': 'IMAGE QUALITY: Document resolution is too low for proper verification',
-                'blurry': 'IMAGE QUALITY: Document is blurry which may indicate motion or tampering',
-                'incomplete_scan': 'IMAGE QUALITY: Document scan appears incomplete'
-            }
-            
-            for issue in data.quality_issues:
-                if issue in quality_fraud_mapping:
-                    quality_issues_found.append(quality_fraud_mapping[issue])
-                    print(f"   Quality issue flagged: {issue}")
-        
-        suspicious_findings.extend(quality_issues_found)
-        
-        # 4. Amount-based anomaly detection
-        amount_anomalies = []
-        if data.total_amount:
-            if data.total_amount == int(data.total_amount) and data.total_amount > 100:
-                amount_anomalies.append(f"AMOUNT PATTERN: Suspiciously round amount ${data.total_amount:,.0f} for large claim")
-                print(f"   Amount anomaly: Round number ${data.total_amount:,.0f}")
-            
-            # Check for unusually high amounts (optional - you can adjust threshold)
-            if data.total_amount > 500000:
-                amount_anomalies.append(f"AMOUNT ALERT: Extremely high claim amount ${data.total_amount:,.2f} requires verification")
-                print(f"   High amount alert: ${data.total_amount:,.2f}")
-        
-        suspicious_findings.extend(amount_anomalies)
-        
-        # 5. OCR confidence-based detection
-        ocr_confidence = ocr_result.get('confidence', 1.0)
-        if ocr_confidence < 0.5:
-            confidence_issue = f"OCR CONFIDENCE: Very low text recognition confidence ({ocr_confidence:.1%}) may indicate poor document quality or tampering"
-            suspicious_findings.append(confidence_issue)
-            print(f"   OCR confidence issue: {ocr_confidence:.1%}")
-        
-        # 6. Document type confidence check
-        if data.document_classification_confidence < 0.3:
-            classification_issue = f"CLASSIFICATION: Unable to determine document type with confidence ({data.document_classification_confidence:.1%})"
-            suspicious_findings.append(classification_issue)
-            print(f"   Classification issue: {data.document_classification_confidence:.1%}")
-        
         # Summary logging
         if suspicious_findings:
-            print(f"FRAUD ANALYSIS COMPLETE: {len(suspicious_findings)} issues detected")
-            for i, finding in enumerate(suspicious_findings, 1):
-                print(f"   {i}. {finding}")
+            print(f"FRAUD CHECK COMPLETE: {len(suspicious_findings)} duplicate(s) detected")
         else:
-            print("FRAUD ANALYSIS COMPLETE: No suspicious indicators detected")
+            print("FRAUD CHECK COMPLETE: No duplicate claims detected")
         
         return suspicious_findings
     
@@ -1165,27 +1076,16 @@ class EnhancedClaimProcessor:
                              classification_result=None, ocr_confidence: float = 0.0) -> ClaimDecision:
         """Simplified claim decision making without confidence calculations"""
         
-        # PRIORITY 1: Fraud-based rejection (highest priority)
+        # PRIORITY 1: Duplicate claim rejection (highest priority)
         if fraud_findings:
-            # Check if any fraud finding indicates duplicate submission
-            duplicate_findings = [f for f in fraud_findings if 'DUPLICATE' in f.upper() or 'SIMILAR' in f.upper()]
-            if duplicate_findings:
-                return ClaimDecision(
-                    status=ClaimStatus.REJECTED,
-                    confidence=0.9,  # Static confidence for clarity
-                    amount=data.total_amount or 0,
-                    reasons=duplicate_findings,
-                    processing_notes="Claim rejected due to duplicate submission detected"
-                )
-            else:
-                # Other fraud findings go to review
-                return ClaimDecision(
-                    status=ClaimStatus.REVIEW,
-                    confidence=0.8,  # Static confidence for clarity
-                    amount=data.total_amount or 0,
-                    reasons=fraud_findings,
-                    processing_notes="Claim requires manual review due to fraud indicators"
-                )
+            # Since fraud detection now only checks duplicates, all findings are duplicate-related
+            return ClaimDecision(
+                status=ClaimStatus.REJECTED,
+                confidence=0.9,  # High confidence for duplicate detection
+                amount=data.total_amount or 0,
+                reasons=fraud_findings,
+                processing_notes="Claim rejected due to duplicate submission detected"
+            )
         
         # PRIORITY 2: Validation issues (only critical field validation)
         if validation_issues:
