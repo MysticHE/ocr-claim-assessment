@@ -10,6 +10,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/components.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/responsive.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/enhanced-results.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/translation-toggle.css') }}">
     
     <!-- Chart.js for interactive visualizations -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -398,11 +399,88 @@
             {% endif %}
 
 
-            <!-- Original OCR Text -->
-            {% if result.ocr_text %}
+            <!-- Dual-Content OCR Text Display -->
+            {% if result.extracted_data and (result.extracted_data.original_ocr_text or result.extracted_data.translated_ocr_text or result.ocr_text) %}
+            <div class="dual-content-ocr">
+                <!-- Translation Controls -->
+                {% if result.extracted_data.original_language and result.extracted_data.original_language != 'en' and result.extracted_data.translation_provider %}
+                <div class="translation-controls">
+                    <div class="translation-info">
+                        <div class="language-detection">
+                            <div class="detected-language">
+                                <span class="language-label">Original Language:</span>
+                                <span class="language-name">{{ result.extracted_data.original_language|upper }}</span>
+                                <span class="confidence-badge">{{ (result.extracted_data.language_confidence * 100)|round if result.extracted_data.language_confidence else '0' }}% confidence</span>
+                            </div>
+                            <div class="translation-provider">
+                                <span class="provider-label">Translated by:</span>
+                                <span class="provider-name">{{ result.extracted_data.translation_provider|title }}</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="content-toggle-buttons">
+                        <button class="toggle-btn active" data-content="translated" onclick="toggleContent('translated', this)">
+                            <span class="flag-icon">🇬🇧</span>
+                            <span class="toggle-text">English Translation</span>
+                        </button>
+                        <button class="toggle-btn" data-content="original" onclick="toggleContent('original', this)">
+                            <span class="flag-icon" id="original-flag">🌐</span>
+                            <span class="toggle-text">Original ({{ result.extracted_data.original_language|upper }})</span>
+                        </button>
+                    </div>
+                </div>
+                {% endif %}
+                
+                <!-- Translated Content Panel -->
+                <div class="content-panel translated-content active" id="translated-content">
+                    <div class="extracted-text">
+                        <h4 class="extracted-text-title">
+                            <span>{% if result.extracted_data.translation_provider %}English Translation{% else %}OCR Text{% endif %}</span>
+                            <span class="ai-badge">
+                                {% if result.extracted_data.translation_provider %}
+                                    {{ result.extracted_data.translation_provider|title }} + {{ result.ai_engines_used[0] if result.ai_engines_used else 'AI' }} OCR
+                                {% else %}
+                                    {{ result.ai_engines_used[0] if result.ai_engines_used else 'AI' }} OCR
+                                {% endif %}
+                            </span>
+                        </h4>
+                        <div class="extracted-text-content">
+                            {{ result.extracted_data.translated_ocr_text or result.ocr_text or 'No text available' }}
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Original Content Panel (only if translation available) -->
+                {% if result.extracted_data.original_language and result.extracted_data.original_language != 'en' and result.extracted_data.translation_provider %}
+                <div class="content-panel original-content" id="original-content">
+                    <div class="extracted-text">
+                        <h4 class="extracted-text-title">
+                            <span>Original Text ({{ result.extracted_data.original_language|upper }})</span>
+                            <span class="ai-badge">{{ result.ai_engines_used[0] if result.ai_engines_used else 'AI' }} OCR</span>
+                        </h4>
+                        <div class="extracted-text-content">
+                            {{ result.extracted_data.original_ocr_text or 'No original text available' }}
+                        </div>
+                        
+                        <div class="language-info">
+                            <div class="detection-details">
+                                <span class="info-item">
+                                    <strong>Language Detected:</strong> {{ result.extracted_data.original_language|upper }} 
+                                    ({{ (result.extracted_data.language_confidence * 100)|round if result.extracted_data.language_confidence else '0' }}% confidence)
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+            
+            <!-- Fallback for old results without dual-content -->
+            {% elif result.ocr_text %}
             <div class="extracted-text">
                 <h4 class="extracted-text-title">
-                    <span>Original OCR Text</span>
+                    <span>OCR Text</span>
                     <span class="ai-badge">{{ result.ai_engines_used[0] if result.ai_engines_used else 'AI' }} OCR</span>
                 </h4>
                 <div class="extracted-text-content">{{ result.ocr_text }}</div>
@@ -468,6 +546,15 @@
         document.addEventListener('DOMContentLoaded', function() {
             // Initialize performance tracking
             trackPagePerformance();
+            
+            // Set correct language flag
+            const originalFlagElement = document.getElementById('original-flag');
+            if (originalFlagElement) {
+                {% if result.extracted_data.original_language %}
+                const langCode = '{{ result.extracted_data.original_language }}';
+                originalFlagElement.textContent = getLanguageFlag(langCode);
+                {% endif %}
+            }
             // View Toggle Controls
             const viewToggles = document.querySelectorAll('.view-toggle');
             const analysisGrid = document.querySelector('.ai-results-grid');
@@ -877,6 +964,58 @@
                 toast.style.transform = 'translateX(100%)';
                 setTimeout(() => toast.remove(), 300);
             }, 3000);
+        }
+
+        // Translation Content Toggle Function
+        function toggleContent(contentType, buttonElement) {
+            // Update button states
+            const buttons = document.querySelectorAll('.content-toggle-buttons .toggle-btn');
+            buttons.forEach(btn => btn.classList.remove('active'));
+            buttonElement.classList.add('active');
+            
+            // Update content panels
+            const panels = document.querySelectorAll('.content-panel');
+            panels.forEach(panel => {
+                panel.classList.remove('active');
+                panel.style.opacity = '0';
+                panel.style.transform = 'translateY(10px)';
+            });
+            
+            // Show selected panel with animation
+            const targetPanel = document.getElementById(`${contentType}-content`);
+            if (targetPanel) {
+                setTimeout(() => {
+                    targetPanel.classList.add('active');
+                    targetPanel.style.opacity = '1';
+                    targetPanel.style.transform = 'translateY(0)';
+                }, 150);
+            }
+            
+            // Store preference in localStorage
+            localStorage.setItem('preferredContentType', contentType);
+        }
+
+        // Language flag helper function (fallback for template)
+        function getLanguageFlag(langCode) {
+            const flags = {
+                'zh': '🇨🇳',
+                'ms': '🇲🇾', 
+                'ta': '🇮🇳',
+                'hi': '🇮🇳',
+                'th': '🇹🇭',
+                'vi': '🇻🇳',
+                'id': '🇮🇩',
+                'ko': '🇰🇷',
+                'ja': '🇯🇵',
+                'ar': '🇸🇦',
+                'fr': '🇫🇷',
+                'de': '🇩🇪',
+                'es': '🇪🇸',
+                'pt': '🇵🇹',
+                'it': '🇮🇹',
+                'ru': '🇷🇺'
+            };
+            return flags[langCode] || '🌐';
         }
     </script>
 </body>

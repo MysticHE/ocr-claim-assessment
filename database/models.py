@@ -32,6 +32,13 @@ class ClaimRecord:
     confidence_score: Optional[float] = None
     metadata: Dict[str, Any] = field(default_factory=dict)
     
+    # Translation fields for dual-content support
+    original_language: Optional[str] = None
+    original_ocr_text: Optional[str] = None
+    translated_ocr_text: Optional[str] = None  
+    translation_provider: Optional[str] = None
+    language_confidence: Optional[float] = None
+    
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for database storage"""
         return {
@@ -45,7 +52,12 @@ class ClaimRecord:
             'ocr_text': self.ocr_text,
             'claim_amount': self.claim_amount,
             'confidence_score': self.confidence_score,
-            'metadata': self.metadata
+            'metadata': self.metadata,
+            'original_language': self.original_language,
+            'original_ocr_text': self.original_ocr_text,
+            'translated_ocr_text': self.translated_ocr_text,
+            'translation_provider': self.translation_provider,
+            'language_confidence': self.language_confidence
         }
     
     @classmethod
@@ -62,7 +74,12 @@ class ClaimRecord:
             ocr_text=data.get('ocr_text'),
             claim_amount=data.get('claim_amount'),
             confidence_score=data.get('confidence_score'),
-            metadata=data.get('metadata', {})
+            metadata=data.get('metadata', {}),
+            original_language=data.get('original_language'),
+            original_ocr_text=data.get('original_ocr_text'),
+            translated_ocr_text=data.get('translated_ocr_text'),
+            translation_provider=data.get('translation_provider'),
+            language_confidence=data.get('language_confidence')
         )
 
 @dataclass

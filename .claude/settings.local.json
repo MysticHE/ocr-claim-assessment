@@ -18,7 +18,12 @@
       "Bash(del test_ocr_fix.py)",
       "WebFetch(domain:docs.mistral.ai)",
       "Bash(del test_classification.py)",
-      "Bash(del test_enhanced_fix.py)"
+      "Bash(del test_enhanced_fix.py)",
+      "Bash(SuperClaude update)",
+      "Bash(where superclaude)",
+      "Bash(echo $PATH)",
+      "Bash(C:UsershuienAppDataLocalProgramsPythonPython313Scriptssuperclaude.exe --help)",
+      "Bash(\"/c/Users/huien/AppData/Local/Programs/Python/Python313/Scripts/superclaude.exe\" --help)"
     ],
     "deny": [],
     "ask": [],

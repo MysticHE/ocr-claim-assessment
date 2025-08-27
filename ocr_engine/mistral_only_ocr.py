@@ -152,6 +152,17 @@ Translate any non-English content to English while preserving the document struc
         except Exception as e:
             return self._handle_extraction_error(e, languages, start_time)
     
+    def extract_original_text_with_mistral(self, file_path: str) -> Dict[str, Any]:
+        """Extract original text without auto-translation for dual-content support"""
+        try:
+            start_time = time.time()
+            
+            # Extract raw text without auto-translation
+            return self._extract_original_with_ocr_api(file_path, start_time)
+                
+        except Exception as e:
+            return self._handle_extraction_error(e, [], start_time)
+    
     def _extract_with_ocr_api(self, file_path: str, languages: List[str], start_time: float) -> Dict[str, Any]:
         """Extract text from both images and PDFs using Mistral OCR API following official documentation"""
         try:
@@ -209,6 +220,65 @@ Translate any non-English content to English while preserving the document struc
             
         except Exception as e:
             return self._handle_extraction_error(e, languages, start_time)
+    
+    def _extract_original_with_ocr_api(self, file_path: str, start_time: float) -> Dict[str, Any]:
+        """Extract original text without auto-translation using Mistral OCR API"""
+        try:
+            # Determine file type and use correct document structure per official docs
+            file_extension = file_path.lower().split('.')[-1]
+            
+            if file_extension == 'pdf':
+                # For PDFs: use document_url structure
+                document_base64 = self._encode_pdf_to_base64(file_path)
+                document_config = {
+                    "type": "document_url",
+                    "document_url": document_base64
+                }
+            else:
+                # For images: use image_url structure as per official documentation
+                document_base64 = self._encode_image_to_base64_for_ocr(file_path)
+                document_config = {
+                    "type": "image_url",
+                    "image_url": document_base64
+                }
+            
+            # Make API call to Mistral OCR endpoint without translation instructions
+            response = self.client.ocr.process(
+                model="mistral-ocr-latest",
+                document=document_config,
+                include_image_base64=True
+            )
+            
+            # Extract text from OCR response
+            extracted_text = ""
+            if response.pages:
+                # Combine text from all pages
+                extracted_text = "\n\n".join([
+                    page.markdown for page in response.pages if hasattr(page, 'markdown') and page.markdown
+                ])
+            
+            # Clean up repetitive OCR patterns that can cause issues
+            extracted_text = self._clean_repetitive_patterns(extracted_text)
+            
+            processing_time = (time.time() - start_time) * 1000
+            
+            # Calculate confidence and detect language
+            confidence = self._calculate_confidence(extracted_text)
+            detected_language = self._detect_language(extracted_text)
+            
+            return {
+                'success': True,
+                'text': extracted_text,
+                'confidence': confidence,
+                'language': detected_language,
+                'processing_time_ms': int(processing_time),
+                'engine': 'mistral_ocr_original',
+                'word_count': len(extracted_text.split()) if extracted_text else 0,
+                'is_original': True  # Flag to indicate this is original untranslated content
+            }
+            
+        except Exception as e:
+            return self._handle_extraction_error(e, [], start_time)
     
     def _extract_from_image_with_ocr_focus(self, image_path: str, languages: List[str], start_time: float) -> Dict[str, Any]:
         """Extract text from images using Mistral Vision API with OCR-focused prompts for raw text extraction"""

@@ -29,6 +29,14 @@ try:
 except ImportError:
     OPENAI_PARSER_AVAILABLE = False
 
+# Translation engine imports
+try:
+    from translation_engine.openai_translator import OpenAITranslator
+    from translation_engine.language_detector import LanguageDetector
+    TRANSLATION_AVAILABLE = True
+except ImportError:
+    TRANSLATION_AVAILABLE = False
+
 @dataclass
 class EnhancedClaimData:
     """Enhanced claim data with AI analysis results"""
@@ -54,6 +62,13 @@ class EnhancedClaimData:
     document_quality_score: float = 0.0
     quality_issues: List[str] = None
     quality_acceptable: bool = True
+    
+    # Translation fields
+    original_language: Optional[str] = None
+    original_ocr_text: Optional[str] = None
+    translated_ocr_text: Optional[str] = None
+    translation_provider: Optional[str] = None
+    language_confidence: Optional[float] = None
     
     # Workflow tracking
     processing_stage: str = "initiated"
@@ -132,6 +147,11 @@ class EnhancedClaimProcessor:
         self._classifier_initialization_attempted = False
         self._assessor_initialization_attempted = False
         self._openai_initialization_attempted = False
+        
+        # Translation engines
+        self._translator = None
+        self._language_detector = None
+        self._translation_initialization_attempted = False
         
         # Streamlined workflow steps definition (8 essential steps)
         self.workflow_steps = [
@@ -251,9 +271,48 @@ class EnhancedClaimProcessor:
         """Check if OpenAI parser is available and configured"""
         return OPENAI_PARSER_AVAILABLE and self.openai_parser is not None and self.openai_parser.available
     
+    @property
+    def translator(self):
+        """Lazy-loaded OpenAI translator"""
+        if not TRANSLATION_AVAILABLE:
+            return None
+            
+        if self._translator is None and not self._translation_initialization_attempted:
+            self._translation_initialization_attempted = True
+            try:
+                print("Initializing OpenAI translator...")
+                self._translator = OpenAITranslator()
+                print("OpenAI translator initialized successfully")
+            except Exception as e:
+                print(f"OpenAI translator not available: {e}")
+                self._translator = None
+        return self._translator
+    
+    @property
+    def language_detector(self):
+        """Lazy-loaded language detector"""
+        if not TRANSLATION_AVAILABLE:
+            return None
+            
+        if self._language_detector is None and not self._translation_initialization_attempted:
+            try:
+                print("Initializing language detector...")
+                self._language_detector = LanguageDetector()
+                print("Language detector initialized successfully")
+            except Exception as e:
+                print(f"Language detector not available: {e}")
+                self._language_detector = None
+        return self._language_detector
+    
+    @property
+    def translation_available(self):
+        """Check if translation services are available"""
+        return TRANSLATION_AVAILABLE and self.translator is not None and self.translator.is_available()
+    
     def process_enhanced_claim(self, ocr_result: Dict[str, Any], 
-                             image_path: Optional[str] = None) -> Dict[str, Any]:
-        """Main enhanced claim processing workflow"""
+                             image_path: Optional[str] = None,
+                             dual_content_result: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        """Main enhanced claim processing workflow with translation support"""
         start_time = time.time()
         
         print(f"Starting enhanced claim processing workflow")
@@ -262,10 +321,12 @@ class EnhancedClaimProcessor:
         print(f"   Classifier available: {self.classifier_available}")
         print(f"   Quality assessor available: {self.quality_assessor_available}")
         print(f"   OpenAI parser available: {self.openai_parser_available}")
+        print(f"   Translation available: {self.translation_available}")
         
         # Determine AI capabilities
         has_advanced_ai = self.classifier_available and self.quality_assessor_available
         has_openai_extraction = self.openai_parser_available
+        has_translation = self.translation_available
         
         if has_openai_extraction:
             print("   Using OpenAI GPT-4o-mini for intelligent data extraction")
@@ -273,6 +334,9 @@ class EnhancedClaimProcessor:
             print("   Using advanced AI engines with regex-based extraction")
         else:
             print("   Running in lightweight fallback mode (regex-only extraction)")
+            
+        if has_translation:
+            print("   Translation services available for dual-content processing")
         
         # Initialize workflow tracking
         workflow_steps = []
@@ -382,7 +446,7 @@ class EnhancedClaimProcessor:
             )
             
             extracted_data = self.extract_enhanced_structured_data(
-                ocr_result, classification_result, quality_result
+                ocr_result, classification_result, quality_result, dual_content_result
             )
             
             current_step.output_summary = f"Extracted {len([x for x in [extracted_data.patient_name, extracted_data.total_amount, extracted_data.provider_name] if x])} key fields"
@@ -535,11 +599,101 @@ class EnhancedClaimProcessor:
                 'workflow_steps': [self._workflow_step_to_dict(step) for step in workflow_steps]
             }
     
+    def process_dual_content_ocr(self, original_ocr_result: Dict[str, Any]) -> Dict[str, Any]:
+        """Process OCR result with dual-content translation support"""
+        try:
+            start_time = time.time()
+            
+            # Extract original text
+            original_text = original_ocr_result.get('text', '')
+            
+            if not original_text:
+                return {
+                    'original_text': '',
+                    'translated_text': '',
+                    'original_language': 'en',
+                    'translation_provider': None,
+                    'language_confidence': 0.0,
+                    'processing_text': original_text
+                }
+            
+            # Step 1: Language Detection
+            print("Detecting document language...")
+            language_result = None
+            detected_language = 'en'
+            language_confidence = 0.0
+            
+            if self.language_detector:
+                language_result = self.language_detector.detect_language(original_text)
+                detected_language = language_result.detected_language
+                language_confidence = language_result.confidence
+                
+                print(f"Language detected: {detected_language} (confidence: {language_confidence:.2f})")
+            else:
+                print("Language detector not available - defaulting to English")
+            
+            # Step 2: Translation (if non-English detected)
+            translated_text = original_text  # Default to original
+            translation_provider = None
+            
+            if detected_language != 'en' and language_confidence > 0.7 and self.translator:
+                print(f"Translating from {detected_language} to English...")
+                
+                translation_result = self.translator.translate(
+                    original_text, 
+                    detected_language, 
+                    'en'
+                )
+                
+                if translation_result.success:
+                    translated_text = translation_result.translated_text
+                    translation_provider = translation_result.provider
+                    print(f"Translation completed successfully using {translation_provider}")
+                else:
+                    print(f"Translation failed: {translation_result.error}")
+                    print("Using original text for processing")
+            else:
+                if detected_language == 'en':
+                    print("Document is in English - no translation needed")
+                elif language_confidence <= 0.7:
+                    print(f"Language detection confidence too low ({language_confidence:.2f}) - skipping translation")
+                else:
+                    print("Translation service not available - using original text")
+            
+            processing_time = int((time.time() - start_time) * 1000)
+            
+            return {
+                'original_text': original_text,
+                'translated_text': translated_text,
+                'original_language': detected_language,
+                'translation_provider': translation_provider,
+                'language_confidence': language_confidence,
+                'processing_text': translated_text,  # Use translated text for downstream processing
+                'translation_processing_time_ms': processing_time
+            }
+            
+        except Exception as e:
+            print(f"Dual-content OCR processing error: {e}")
+            return {
+                'original_text': original_ocr_result.get('text', ''),
+                'translated_text': original_ocr_result.get('text', ''),
+                'original_language': 'en',
+                'translation_provider': None,
+                'language_confidence': 0.0,
+                'processing_text': original_ocr_result.get('text', ''),
+                'error': str(e)
+            }
+    
     def extract_enhanced_structured_data(self, ocr_result: Dict[str, Any],
                                        classification_result=None,
-                                       quality_result=None) -> EnhancedClaimData:
+                                       quality_result=None,
+                                       dual_content_result=None) -> EnhancedClaimData:
         """Enhanced structured data extraction with OpenAI intelligence and fallback to regex"""
-        text = ocr_result.get('text', '')
+        # Use translated text for processing if available, otherwise use original
+        if dual_content_result and dual_content_result.get('processing_text'):
+            text = dual_content_result['processing_text']
+        else:
+            text = ocr_result.get('text', '')
         
         # Create enhanced claim data
         extracted = EnhancedClaimData()
@@ -638,6 +792,14 @@ class EnhancedClaimProcessor:
             extracted.document_quality_score = quality_result.quality_score.overall_score
             extracted.quality_issues = [issue.value for issue in quality_result.issues_detected]
             extracted.quality_acceptable = quality_result.is_acceptable
+        
+        # Add dual-content translation data if available
+        if dual_content_result:
+            extracted.original_language = dual_content_result.get('original_language')
+            extracted.original_ocr_text = dual_content_result.get('original_text')
+            extracted.translated_ocr_text = dual_content_result.get('translated_text')
+            extracted.translation_provider = dual_content_result.get('translation_provider')
+            extracted.language_confidence = dual_content_result.get('language_confidence')
         
         # AI confidence scores removed for simplified processing
         

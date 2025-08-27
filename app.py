@@ -284,12 +284,28 @@ def upload_file():
                 'error_type': error_type
             }), 400
         
-        # Process claim logic with enhanced AI workflow
+        # Process with dual-content OCR support
         try:
+            print(f"Starting dual-content OCR processing for claim {claim_id}")
+            
+            # Step 1: Extract original text using modified Mistral OCR
+            original_ocr_result = ocr_engine.extract_original_text_with_mistral(filepath)
+            print(f"Original OCR extraction: Success={original_ocr_result.get('success', False)}")
+            
+            # Step 2: Process dual-content (language detection + translation)
+            dual_content_result = enhanced_claim_processor.process_dual_content_ocr(original_ocr_result)
+            print(f"Dual-content processing completed:")
+            print(f"   Original language: {dual_content_result.get('original_language', 'unknown')}")
+            print(f"   Translation provider: {dual_content_result.get('translation_provider', 'none')}")
+            
+            # Step 3: Enhanced claim processing with dual-content
             print(f"Starting enhanced processing for claim {claim_id}")
-            claim_decision = enhanced_claim_processor.process_enhanced_claim(ocr_results, filepath)
+            claim_decision = enhanced_claim_processor.process_enhanced_claim(
+                ocr_results, filepath, dual_content_result
+            )
             print(f"Enhanced processing completed. Success: {claim_decision.get('success', False)}")
             print(f"   Data keys: {list(claim_decision.keys()) if claim_decision else 'None'}")
+            
         except Exception as e:
             print(f"Enhanced processing failed: {e}")
             import traceback
@@ -318,7 +334,18 @@ def upload_file():
         print(f"   Enhanced results available: {enhanced_results is not None}")
         print(f"   Claim decision success: {claim_decision.get('success', False)}")
         
-        # Update claim with enhanced results
+        # Prepare dual-content metadata if available
+        dual_content_metadata = {}
+        if 'dual_content_result' in locals():
+            dual_content_metadata = {
+                'original_language': dual_content_result.get('original_language'),
+                'original_ocr_text': dual_content_result.get('original_text'),
+                'translated_ocr_text': dual_content_result.get('translated_text'),
+                'translation_provider': dual_content_result.get('translation_provider'),
+                'language_confidence': dual_content_result.get('language_confidence')
+            }
+        
+        # Update claim with enhanced results including dual-content
         db.update_claim_status(
             claim_id, 
             claim_decision['status'], 
@@ -329,7 +356,8 @@ def upload_file():
                 'processing_time_ms': processing_time,
                 'claim_amount': claim_decision.get('amount', 0),
                 'decision_reasons': make_json_serializable(claim_decision.get('reasons', [])),
-                'enhanced_results': enhanced_results
+                'enhanced_results': enhanced_results,
+                **dual_content_metadata  # Include dual-content fields
             }
         )
         
