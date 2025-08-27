@@ -16,6 +16,9 @@ class Config:
     MISTRAL_API_KEY = os.environ.get('MISTRAL_API_KEY')
     SUPPORTED_LANGUAGES = os.environ.get('SUPPORTED_LANGUAGES', 'en,ch_sim,ms,ta,korean').split(',')
     
+    # OCR Text Processing Configuration
+    PRESERVE_TABLE_STRUCTURE = os.environ.get('PRESERVE_TABLE_STRUCTURE', 'True').lower() == 'true'
+    
     # OCR Engine Selection
     # Options: 'hybrid' (Mistral + EasyOCR fallback) or 'mistral_only' (streamlined)
     OCR_ENGINE_TYPE = os.environ.get('OCR_ENGINE_TYPE', 'hybrid')

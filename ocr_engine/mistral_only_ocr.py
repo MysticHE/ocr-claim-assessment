@@ -15,12 +15,18 @@ except ImportError:
 from config.settings import Config
 
 class MistralOnlyOCREngine:
-    """Streamlined OCR engine using only Mistral AI for maximum performance"""
+    """Streamlined OCR engine using only Mistral AI with intelligent table preservation"""
     
-    def __init__(self):
-        """Initialize Mistral-only OCR engine"""
+    def __init__(self, preserve_tables: bool = True):
+        """Initialize Mistral-only OCR engine
+        
+        Args:
+            preserve_tables: If True, preserves table structure with pipes.
+                           If False, removes all pipes for clean flowing text.
+        """
         self.api_key = Config.MISTRAL_API_KEY
         self.client = None
+        self.preserve_tables = preserve_tables
         
         if not MISTRAL_AVAILABLE:
             print("Warning: Mistral AI library not available")
@@ -199,8 +205,8 @@ Translate any non-English content to English while preserving the document struc
                     page.markdown for page in response.pages if hasattr(page, 'markdown') and page.markdown
                 ])
             
-            # Enhanced text cleaning: remove pipes, excessive spaces, and repetitive patterns
-            extracted_text = self._clean_repetitive_patterns(extracted_text)
+            # Enhanced text cleaning: intelligent table preservation or pipe removal
+            extracted_text = self._clean_repetitive_patterns(extracted_text, preserve_tables=self.preserve_tables)
             
             processing_time = (time.time() - start_time) * 1000
             
@@ -257,8 +263,8 @@ Translate any non-English content to English while preserving the document struc
                     page.markdown for page in response.pages if hasattr(page, 'markdown') and page.markdown
                 ])
             
-            # Enhanced text cleaning: remove pipes, excessive spaces, and repetitive patterns
-            extracted_text = self._clean_repetitive_patterns(extracted_text)
+            # Enhanced text cleaning: intelligent table preservation or pipe removal
+            extracted_text = self._clean_repetitive_patterns(extracted_text, preserve_tables=self.preserve_tables)
             
             processing_time = (time.time() - start_time) * 1000
             
@@ -509,8 +515,8 @@ Translate any non-English content to English while preserving the document struc
         # Ensure confidence is between 0 and 1
         return max(0.0, min(1.0, confidence))
     
-    def _clean_repetitive_patterns(self, text: str) -> str:
-        """Enhanced text cleaning to remove repetitive patterns, pipe characters, and excessive spacing"""
+    def _clean_repetitive_patterns(self, text: str, preserve_tables: bool = False) -> str:
+        """Enhanced text cleaning with intelligent table preservation or complete pipe removal"""
         if not text:
             return text
         
@@ -518,8 +524,11 @@ Translate any non-English content to English while preserving the document struc
         
         import re
         
-        # Step 1: Clean pipe characters and excessive spacing (NEW)
-        cleaned_text = self._clean_pipes_and_spacing(text)
+        # Step 1: Clean text with table awareness (NEW)
+        if preserve_tables:
+            cleaned_text = self._clean_with_table_preservation(text)
+        else:
+            cleaned_text = self._clean_pipes_and_spacing(text)
         
         lines = cleaned_text.split('\n')
         
@@ -670,6 +679,212 @@ Translate any non-English content to English while preserving the document struc
         text = text.strip()  # Remove leading/trailing whitespace
         
         return text
+    
+    def _clean_with_table_preservation(self, text: str) -> str:
+        """Clean OCR text while preserving meaningful table structures"""
+        if not text:
+            return text
+        
+        import re
+        
+        lines = text.split('\n')
+        
+        # Step 1: Analyze document for table patterns
+        table_info = self._analyze_table_structure(lines)
+        
+        # Step 2: Process each line based on table context
+        processed_lines = []
+        
+        for i, line in enumerate(lines):
+            line_type = table_info['line_types'].get(i, 'content')
+            
+            if line_type == 'separator':
+                # Skip pure separator lines (--- | --- | ---)
+                continue
+            elif line_type == 'header' or line_type == 'data':
+                # Clean but preserve table structure
+                cleaned_line = self._clean_table_row(line, table_info)
+                if cleaned_line.strip():  # Only add non-empty lines
+                    processed_lines.append(cleaned_line)
+            elif line_type == 'content':
+                # Regular content - clean pipes and spacing
+                cleaned_line = self._clean_content_line(line)
+                processed_lines.append(cleaned_line)
+            else:
+                # Unknown type - clean minimally
+                processed_lines.append(line.strip())
+        
+        # Step 3: Format tables properly
+        final_text = self._format_preserved_tables(processed_lines, table_info)
+        
+        # Step 4: Final cleanup
+        final_text = re.sub(r'\n{3,}', '\n\n', final_text)
+        final_text = final_text.strip()
+        
+        return final_text
+    
+    def _analyze_table_structure(self, lines: list) -> dict:
+        """Analyze text lines to identify table structure patterns"""
+        import re
+        
+        table_info = {
+            'line_types': {},  # line_number: type
+            'table_regions': [],  # [(start, end), ...]
+            'column_count': 0,
+            'has_headers': False
+        }
+        
+        pipe_threshold = 2  # Minimum pipes to consider a table row
+        separator_pattern = re.compile(r'^[\s\|\-_=]{10,}$')  # Pure separator lines
+        
+        current_table_start = None
+        consecutive_table_lines = 0
+        
+        for i, line in enumerate(lines):
+            stripped = line.strip()
+            
+            # Count pipe characters
+            pipe_count = stripped.count('|')
+            
+            # Detect separator lines (--- | --- | ---)
+            if separator_pattern.match(stripped):
+                table_info['line_types'][i] = 'separator'
+                continue
+            
+            # Check if this looks like a table row
+            if pipe_count >= pipe_threshold:
+                # Analyze content between pipes
+                parts = [part.strip() for part in stripped.split('|')]
+                content_parts = [part for part in parts if part and not re.match(r'^[\s\-_=]*$', part)]
+                
+                if len(content_parts) >= 2:  # At least 2 meaningful columns
+                    if current_table_start is None:
+                        current_table_start = i
+                        consecutive_table_lines = 1
+                        
+                        # Check if this might be a header (first table line)
+                        if self._looks_like_header(content_parts):
+                            table_info['line_types'][i] = 'header'
+                            table_info['has_headers'] = True
+                        else:
+                            table_info['line_types'][i] = 'data'
+                    else:
+                        consecutive_table_lines += 1
+                        table_info['line_types'][i] = 'data'
+                    
+                    # Update column count
+                    table_info['column_count'] = max(table_info['column_count'], len(content_parts))
+                else:
+                    # Line has pipes but not enough content - likely formatting artifact
+                    table_info['line_types'][i] = 'content'
+                    if current_table_start is not None and consecutive_table_lines >= 2:
+                        table_info['table_regions'].append((current_table_start, i - 1))
+                    current_table_start = None
+                    consecutive_table_lines = 0
+            else:
+                # Regular content line
+                table_info['line_types'][i] = 'content'
+                if current_table_start is not None and consecutive_table_lines >= 2:
+                    table_info['table_regions'].append((current_table_start, i - 1))
+                current_table_start = None
+                consecutive_table_lines = 0
+        
+        # Close any open table at end of document
+        if current_table_start is not None and consecutive_table_lines >= 2:
+            table_info['table_regions'].append((current_table_start, len(lines) - 1))
+        
+        return table_info
+    
+    def _looks_like_header(self, parts: list) -> bool:
+        """Check if table row parts look like headers"""
+        # Headers often contain descriptive words, not just data
+        header_indicators = [
+            'name', 'date', 'amount', 'description', 'type', 'item', 'service',
+            'patient', 'doctor', 'diagnosis', 'treatment', 'fee', 'charge'
+        ]
+        
+        for part in parts:
+            part_lower = part.lower()
+            if any(indicator in part_lower for indicator in header_indicators):
+                return True
+            # Headers often have title case or all caps
+            if len(part) > 2 and (part.istitle() or part.isupper()):
+                return True
+        
+        return False
+    
+    def _clean_table_row(self, line: str, table_info: dict) -> str:
+        """Clean a table row while preserving structure"""
+        import re
+        
+        # Split by pipes and clean each cell
+        parts = line.split('|')
+        cleaned_parts = []
+        
+        for part in parts:
+            cleaned_part = part.strip()
+            
+            # Remove excessive spaces within cells
+            cleaned_part = re.sub(r'\s{2,}', ' ', cleaned_part)
+            
+            # Skip empty cells or pure formatting
+            if cleaned_part and not re.match(r'^[\s\-_=]*$', cleaned_part):
+                cleaned_parts.append(cleaned_part)
+        
+        # Reconstruct table row with clean formatting
+        if len(cleaned_parts) >= 2:  # Valid table row
+            return '| ' + ' | '.join(cleaned_parts) + ' |'
+        elif len(cleaned_parts) == 1:  # Single column
+            return cleaned_parts[0]
+        else:
+            return ''
+    
+    def _clean_content_line(self, line: str) -> str:
+        """Clean a regular content line (non-table)"""
+        import re
+        
+        # Remove all pipes from content lines
+        cleaned = re.sub(r'\s*\|\s*', ' ', line)
+        
+        # Normalize spacing
+        cleaned = re.sub(r'\s{2,}', ' ', cleaned)
+        
+        return cleaned.strip()
+    
+    def _format_preserved_tables(self, lines: list, table_info: dict) -> str:
+        """Format the final output with properly structured tables"""
+        if not table_info['table_regions']:
+            # No tables detected, just join lines
+            return '\n'.join(lines)
+        
+        formatted_lines = []
+        line_index = 0
+        
+        for start, end in table_info['table_regions']:
+            # Add content before table
+            while line_index < start:
+                if line_index < len(lines):
+                    formatted_lines.append(lines[line_index])
+                line_index += 1
+            
+            # Add table with proper formatting
+            formatted_lines.append('')  # Blank line before table
+            
+            # Add table content
+            while line_index <= end and line_index < len(lines):
+                table_line = lines[line_index]
+                if table_line.strip():  # Only add non-empty lines
+                    formatted_lines.append(table_line)
+                line_index += 1
+            
+            formatted_lines.append('')  # Blank line after table
+        
+        # Add remaining content after last table
+        while line_index < len(lines):
+            formatted_lines.append(lines[line_index])
+            line_index += 1
+        
+        return '\n'.join(formatted_lines)
     
     def _detect_language(self, text: str) -> str:
         """Simple language detection based on text characteristics"""

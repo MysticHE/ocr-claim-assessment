@@ -103,8 +103,12 @@ except Exception as e:
     db = None
 
 try:
-    ocr_engine = MistralOnlyOCREngine()
-    print("✓ Mistral OCR engine initialized")
+    # Initialize OCR engine with table preservation configuration
+    preserve_tables = Config.PRESERVE_TABLE_STRUCTURE
+    ocr_engine = MistralOnlyOCREngine(preserve_tables=preserve_tables)
+    
+    table_mode = "table-preserving" if preserve_tables else "clean-text"
+    print(f"✓ Mistral OCR engine initialized ({table_mode} mode)")
 except Exception as e:
     print(f"✗ OCR engine initialization failed: {e}")
     print(f"   Error type: {type(e).__name__}")
