@@ -738,6 +738,56 @@ def health_check():
             'timestamp': time.time()
         }), 503
 
+# Template context processors and utilities
+@app.context_processor
+def inject_template_utilities():
+    """Add utility functions available in all templates"""
+    
+    # Language code to full name mapping
+    language_names = {
+        'en': 'English',
+        'zh': 'Chinese',
+        'zh-cn': 'Chinese (Simplified)',
+        'zh-tw': 'Chinese (Traditional)',
+        'ms': 'Malay',
+        'ta': 'Tamil',
+        'hi': 'Hindi',
+        'th': 'Thai',
+        'vi': 'Vietnamese',
+        'id': 'Indonesian',
+        'ko': 'Korean',
+        'ja': 'Japanese',
+        'ar': 'Arabic',
+        'ur': 'Urdu',
+        'bn': 'Bengali',
+        'te': 'Telugu',
+        'ml': 'Malayalam',
+        'kn': 'Kannada',
+        'gu': 'Gujarati',
+        'pa': 'Punjabi',
+        'mr': 'Marathi',
+        'ne': 'Nepali',
+        'si': 'Sinhala',
+        'my': 'Myanmar',
+        'km': 'Khmer',
+        'lo': 'Lao',
+        'tl': 'Tagalog',
+        'fr': 'French',
+        'de': 'German',
+        'es': 'Spanish',
+        'pt': 'Portuguese',
+        'it': 'Italian',
+        'ru': 'Russian'
+    }
+    
+    def get_language_name(lang_code):
+        """Convert language code to full name"""
+        if not lang_code:
+            return 'Unknown'
+        return language_names.get(lang_code.lower(), lang_code.upper())
+    
+    return dict(get_language_name=get_language_name)
+
 @app.errorhandler(404)
 def not_found(e):
     return render_template('404.html'), 404

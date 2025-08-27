@@ -409,12 +409,8 @@
                         <div class="language-detection">
                             <div class="detected-language">
                                 <span class="language-label">Original Language:</span>
-                                <span class="language-name">{{ result.extracted_data.original_language|upper }}</span>
+                                <span class="language-name">{{ get_language_name(result.extracted_data.original_language) }}</span>
                                 <span class="confidence-badge">{{ (result.extracted_data.language_confidence * 100)|round if result.extracted_data.language_confidence else '0' }}% confidence</span>
-                            </div>
-                            <div class="translation-provider">
-                                <span class="provider-label">Translated by:</span>
-                                <span class="provider-name">{{ result.extracted_data.translation_provider|title }}</span>
                             </div>
                         </div>
                     </div>
@@ -426,7 +422,7 @@
                         </button>
                         <button class="toggle-btn" data-content="original" onclick="toggleContent('original', this)">
                             <span class="flag-icon" id="original-flag">🌐</span>
-                            <span class="toggle-text">Original ({{ result.extracted_data.original_language|upper }})</span>
+                            <span class="toggle-text">Original ({{ get_language_name(result.extracted_data.original_language) }})</span>
                         </button>
                     </div>
                 </div>
@@ -456,7 +452,7 @@
                 <div class="content-panel original-content" id="original-content">
                     <div class="extracted-text">
                         <h4 class="extracted-text-title">
-                            <span>Original Text ({{ result.extracted_data.original_language|upper }})</span>
+                            <span>Original Text ({{ get_language_name(result.extracted_data.original_language) }})</span>
                             <span class="ai-badge">{{ result.ai_engines_used[0] if result.ai_engines_used else 'AI' }} OCR</span>
                         </h4>
                         <div class="extracted-text-content">
@@ -466,7 +462,7 @@
                         <div class="language-info">
                             <div class="detection-details">
                                 <span class="info-item">
-                                    <strong>Language Detected:</strong> {{ result.extracted_data.original_language|upper }} 
+                                    <strong>Language Detected:</strong> {{ get_language_name(result.extracted_data.original_language) }} 
                                     ({{ (result.extracted_data.language_confidence * 100)|round if result.extracted_data.language_confidence else '0' }}% confidence)
                                 </span>
                             </div>

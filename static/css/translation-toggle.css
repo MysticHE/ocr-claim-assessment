@@ -15,13 +15,13 @@
 }
 
 .translation-info {
-    margin-bottom: 1.5rem;
+    margin-bottom: 1rem;
 }
 
 .language-detection {
     display: flex;
     flex-wrap: wrap;
-    gap: 1.5rem;
+    gap: 1rem;
     align-items: center;
 }
 
@@ -145,7 +145,7 @@
 }
 
 .content-panel .extracted-text-content {
-    padding: 1.5rem;
+    padding: 0.75rem 1rem;
     background: white;
     color: #1e293b;
     line-height: 1.6;
@@ -153,6 +153,7 @@
     font-size: 0.9rem;
     white-space: pre-wrap;
     word-wrap: break-word;
+    margin: 0;
 }
 
 .language-info {
@@ -236,6 +237,42 @@
         opacity: 1;
         transform: translateY(0);
     }
+}
+
+/* Improved spacing and alignment fixes */
+.dual-content-ocr .translation-controls {
+    border-bottom: 1px solid #e2e8f0;
+    margin-bottom: 0;
+}
+
+.dual-content-ocr .content-panel {
+    margin: 0;
+}
+
+.dual-content-ocr .content-panel .extracted-text {
+    margin: 0;
+    border-radius: 0;
+}
+
+/* Remove excess spacing between sections */
+.content-panel + .content-panel {
+    margin-top: 0;
+}
+
+/* Better spacing for language info section */
+.language-info {
+    margin: 0;
+}
+
+.detected-language {
+    margin-right: 0;
+}
+
+/* Ensure consistent content alignment between English and original text */
+.translated-content .extracted-text-content,
+.original-content .extracted-text-content {
+    padding: 0.75rem 1rem;
+    text-align: left;
 }
 
 .content-panel.active .extracted-text-content {
