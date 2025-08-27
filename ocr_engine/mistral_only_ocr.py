@@ -208,6 +208,10 @@ Translate any non-English content to English while preserving the document struc
             # Enhanced text cleaning: intelligent table preservation or pipe removal
             extracted_text = self._clean_repetitive_patterns(extracted_text, preserve_tables=self.preserve_tables)
             
+            # CRITICAL FIX: Strip leading whitespace from the ENTIRE text block to fix first row spacing
+            # This addresses the root cause where Mistral OCR returns text with leading indentation
+            extracted_text = extracted_text.lstrip()
+            
             processing_time = (time.time() - start_time) * 1000
             
             # Calculate confidence and detect language
@@ -265,6 +269,10 @@ Translate any non-English content to English while preserving the document struc
             
             # Enhanced text cleaning: intelligent table preservation or pipe removal
             extracted_text = self._clean_repetitive_patterns(extracted_text, preserve_tables=self.preserve_tables)
+            
+            # CRITICAL FIX: Strip leading whitespace from the ENTIRE text block to fix first row spacing
+            # This addresses the root cause where Mistral OCR returns text with leading indentation
+            extracted_text = extracted_text.lstrip()
             
             processing_time = (time.time() - start_time) * 1000
             
@@ -634,13 +642,23 @@ Translate any non-English content to English while preserving the document struc
         
         # Step 3: Clean up lines that are mostly pipes and dashes (table formatting artifacts)
         lines = text.split('\n')
-        # CRITICAL FIX: Strip only trailing whitespace, preserve document structure
-        lines = [line.rstrip() for line in lines]
-        cleaned_lines = []
         
-        for line in lines:
+        # ENHANCED FIX: Smart line processing to address first row spacing issue
+        cleaned_lines = []
+        for i, line in enumerate(lines):
+            # For the FIRST line only: remove leading whitespace to fix display issue
+            if i == 0:
+                # Remove leading spaces/tabs from first line while preserving content
+                cleaned_line = line.lstrip()
+                # But keep trailing spaces for document structure preservation
+                if line.endswith(' '):
+                    cleaned_line = cleaned_line + ' '
+            else:
+                # For other lines: preserve document structure by only removing trailing whitespace
+                cleaned_line = line.rstrip()
+            
             # Skip lines that are mostly formatting characters
-            stripped_line = line.strip()
+            stripped_line = cleaned_line.strip()
             if stripped_line and len(stripped_line) > 0:
                 # Count actual content vs formatting characters
                 content_chars = re.sub(r'[\|\-\s_=]+', '', stripped_line)
@@ -648,14 +666,15 @@ Translate any non-English content to English while preserving the document struc
                 
                 # If line is more than 70% formatting characters, it's likely a table border
                 if len(content_chars) > 0 and formatting_chars / len(stripped_line) < 0.7:
-                    cleaned_lines.append(line)
+                    cleaned_lines.append(cleaned_line)
                 elif len(content_chars) == 0 and len(stripped_line) > 10:
                     # Skip pure formatting lines
                     continue
                 else:
-                    cleaned_lines.append(line)
+                    cleaned_lines.append(cleaned_line)
             else:
-                cleaned_lines.append(line)
+                # Keep empty lines for document structure
+                cleaned_lines.append(cleaned_line)
         
         text = '\n'.join(cleaned_lines)
         
@@ -678,7 +697,7 @@ Translate any non-English content to English while preserving the document struc
         # Step 7: Final whitespace normalization
         text = re.sub(r'\n\s*\n', '\n\n', text)  # Normalize line breaks
         text = re.sub(r'\n{3,}', '\n\n', text)     # Max 2 consecutive line breaks
-        text = text.strip()  # Remove leading/trailing whitespace
+        text = text.strip()  # Remove leading/trailing whitespace from entire text
         
         return text
     
@@ -691,19 +710,31 @@ Translate any non-English content to English while preserving the document struc
         
         lines = text.split('\n')
         
-        # CRITICAL FIX: Strip only trailing whitespace, preserve document structure  
-        lines = [line.rstrip() for line in lines]
+        # ENHANCED FIX: Smart line processing to address first row spacing issue
+        processed_lines = []
+        for i, line in enumerate(lines):
+            # For the FIRST line only: remove leading whitespace to fix display issue
+            if i == 0:
+                # Remove leading spaces/tabs from first line while preserving content
+                processed_line = line.lstrip()
+                # But preserve any meaningful trailing whitespace
+                if line.endswith(' ') and not processed_line.endswith(' '):
+                    processed_line = processed_line + ' '
+                processed_lines.append(processed_line)
+            else:
+                # For other lines: preserve document structure by only removing trailing whitespace
+                processed_lines.append(line.rstrip())
+        
+        lines = processed_lines
         
         # Step 1: Analyze document for table patterns  
         table_info = self._analyze_table_structure(lines)
         
         # Step 2: Process each line based on table context
-        processed_lines = []
+        final_processed_lines = []
         
         for i, line in enumerate(lines):
             line_type = table_info['line_types'].get(i, 'content')
-            
-            # Line already stripped above, no need to strip again
             
             if line_type == 'separator':
                 # Skip pure separator lines (--- | --- | ---)
@@ -712,17 +743,17 @@ Translate any non-English content to English while preserving the document struc
                 # Clean but preserve table structure
                 cleaned_line = self._clean_table_row(line, table_info)
                 if cleaned_line.strip():  # Only add non-empty lines
-                    processed_lines.append(cleaned_line)
+                    final_processed_lines.append(cleaned_line)
             elif line_type == 'content':
                 # Regular content - clean pipes and spacing
                 cleaned_line = self._clean_content_line(line)
-                processed_lines.append(cleaned_line)
+                final_processed_lines.append(cleaned_line)
             else:
                 # Unknown type - clean minimally
-                processed_lines.append(line)
+                final_processed_lines.append(line)
         
         # Step 3: Format tables properly
-        final_text = self._format_preserved_tables(processed_lines, table_info)
+        final_text = self._format_preserved_tables(final_processed_lines, table_info)
         
         # Step 4: Final cleanup
         final_text = re.sub(r'\n{3,}', '\n\n', final_text)
@@ -841,7 +872,7 @@ Translate any non-English content to English while preserving the document struc
             if cleaned_part and not re.match(r'^[\s\-_=]*$', cleaned_part):
                 cleaned_parts.append(cleaned_part)
         
-        # Reconstruct table row with consistent formatting (no leading spaces)
+        # Reconstruct table row with consistent formatting
         if len(cleaned_parts) >= 2:  # Valid table row
             return '| ' + ' | '.join(cleaned_parts) + ' |'
         elif len(cleaned_parts) == 1:  # Single column
@@ -853,8 +884,8 @@ Translate any non-English content to English while preserving the document struc
         """Clean a regular content line (non-table) with proper word boundaries"""
         import re
         
-        # First normalize all whitespace
-        line = line.strip()
+        # First normalize all whitespace (but preserve leading for structure)
+        line = line.rstrip()  # Only remove trailing, preserve leading for indentation
         
         # Remove pipes and ensure proper word separation
         # Pattern: word|word -> word word (with space)
@@ -898,7 +929,7 @@ Translate any non-English content to English while preserving the document struc
             # Add line break before Provided by
             cleaned = re.sub(r'(\d+\s+)(Provided\s+by:)', r'\1\n\2', cleaned)
         
-        return cleaned.strip()
+        return cleaned.rstrip()  # Final trailing whitespace cleanup
     
     def _format_preserved_tables(self, lines: list, table_info: dict) -> str:
         """Format the final output with properly structured tables"""
