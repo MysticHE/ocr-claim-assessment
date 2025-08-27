@@ -814,8 +814,11 @@ Translate any non-English content to English while preserving the document struc
         return False
     
     def _clean_table_row(self, line: str, table_info: dict) -> str:
-        """Clean a table row while preserving structure"""
+        """Clean a table row while preserving structure and fixing alignment"""
         import re
+        
+        # First, normalize all leading/trailing whitespace
+        line = line.strip()
         
         # Split by pipes and clean each cell
         parts = line.split('|')
@@ -831,7 +834,7 @@ Translate any non-English content to English while preserving the document struc
             if cleaned_part and not re.match(r'^[\s\-_=]*$', cleaned_part):
                 cleaned_parts.append(cleaned_part)
         
-        # Reconstruct table row with clean formatting
+        # Reconstruct table row with consistent formatting (no leading spaces)
         if len(cleaned_parts) >= 2:  # Valid table row
             return '| ' + ' | '.join(cleaned_parts) + ' |'
         elif len(cleaned_parts) == 1:  # Single column
