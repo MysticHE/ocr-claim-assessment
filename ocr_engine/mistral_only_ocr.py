@@ -843,14 +843,43 @@ Translate any non-English content to English while preserving the document struc
             return ''
     
     def _clean_content_line(self, line: str) -> str:
-        """Clean a regular content line (non-table)"""
+        """Clean a regular content line (non-table) with proper word boundaries"""
         import re
         
-        # Remove all pipes from content lines
-        cleaned = re.sub(r'\s*\|\s*', ' ', line)
+        # First normalize all whitespace
+        line = line.strip()
         
-        # Normalize spacing
+        # Remove pipes and ensure proper word separation
+        # Pattern: word|word -> word word (with space)
+        cleaned = re.sub(r'([a-zA-Z0-9\u00C0-\u017F\u4e00-\u9fff\uac00-\ud7af])\s*\|\s*([a-zA-Z0-9\u00C0-\u017F\u4e00-\u9fff\uac00-\ud7af])', r'\1 \2', line)
+        
+        # Remove remaining standalone pipes
+        cleaned = re.sub(r'\s*\|\s*', ' ', cleaned)
+        
+        # Fix spacing between words that might have been separated by pipes
+        # Insert space between UpperCase transitions (clinic names, addresses)
+        cleaned = re.sub(r'([a-z])([A-Z])', r'\1 \2', cleaned)
+        
+        # Insert space between letters and numbers
+        cleaned = re.sub(r'([A-Za-z])(\d)', r'\1 \2', cleaned)
+        cleaned = re.sub(r'(\d)([A-Za-z])', r'\1 \2', cleaned)
+        
+        # Insert space before parentheses and after
+        cleaned = re.sub(r'([a-zA-Z0-9])(\()', r'\1 \2', cleaned)
+        cleaned = re.sub(r'(\))([a-zA-Z0-9])', r'\1 \2', cleaned)
+        
+        # Normalize multiple spaces to single space
         cleaned = re.sub(r'\s{2,}', ' ', cleaned)
+        
+        # Insert logical breaks for long clinic information lines
+        # Pattern: CLINIC_NAME + ADDRESS should have clear separation
+        if len(cleaned) > 80:  # Long lines likely need formatting
+            # Add line break before address patterns
+            cleaned = re.sub(r'([A-Z\s]{10,}?)(\d+\s+\w+\s+\w+)', r'\1\n\2', cleaned)
+            # Add line break before registration numbers
+            cleaned = re.sub(r'(.*?)(\([S]\(\d+\).*)', r'\1\n\2', cleaned)
+            # Add line break before contact information  
+            cleaned = re.sub(r'(.*?)(Tel:|Phone:|Telephone:)', r'\1\n\2', cleaned)
         
         return cleaned.strip()
     
