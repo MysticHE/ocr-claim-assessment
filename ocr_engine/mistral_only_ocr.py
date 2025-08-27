@@ -218,14 +218,18 @@ Translate any non-English content to English while preserving the document struc
             confidence = self._calculate_confidence(extracted_text)
             detected_language = self._detect_language(extracted_text)
             
+            # FINAL SAFETY CHECK: Ensure absolutely no leading whitespace in final result
+            # This is the last line of defense before text reaches the Enhanced Processor
+            final_text = extracted_text.lstrip() if extracted_text else ''
+            
             return {
                 'success': True,
-                'text': extracted_text,
+                'text': final_text,
                 'confidence': confidence,
                 'language': detected_language,
                 'processing_time_ms': int(processing_time),
                 'engine': 'mistral_ocr',
-                'word_count': len(extracted_text.split()) if extracted_text else 0
+                'word_count': len(final_text.split()) if final_text else 0
             }
             
         except Exception as e:
@@ -280,14 +284,18 @@ Translate any non-English content to English while preserving the document struc
             confidence = self._calculate_confidence(extracted_text)
             detected_language = self._detect_language(extracted_text)
             
+            # FINAL SAFETY CHECK: Ensure absolutely no leading whitespace in final result
+            # This is the last line of defense before text reaches the Enhanced Processor
+            final_text = extracted_text.lstrip() if extracted_text else ''
+            
             return {
                 'success': True,
-                'text': extracted_text,
+                'text': final_text,
                 'confidence': confidence,
                 'language': detected_language,
                 'processing_time_ms': int(processing_time),
                 'engine': 'mistral_ocr_original',
-                'word_count': len(extracted_text.split()) if extracted_text else 0,
+                'word_count': len(final_text.split()) if final_text else 0,
                 'is_original': True  # Flag to indicate this is original untranslated content
             }
             
@@ -339,14 +347,18 @@ Translate any non-English content to English while preserving the document struc
             confidence = self._calculate_confidence(extracted_text)
             detected_language = self._detect_language(extracted_text)
             
+            # FINAL SAFETY CHECK: Ensure absolutely no leading whitespace in final result
+            # This is the last line of defense before text reaches the Enhanced Processor
+            final_text = extracted_text.lstrip() if extracted_text else ''
+            
             return {
                 'success': True,
-                'text': extracted_text,
+                'text': final_text,
                 'confidence': confidence,
                 'language': detected_language,
                 'processing_time_ms': int(processing_time),
                 'engine': 'mistral_vision_ocr',
-                'word_count': len(extracted_text.split()) if extracted_text else 0
+                'word_count': len(final_text.split()) if final_text else 0
             }
             
         except Exception as e:
