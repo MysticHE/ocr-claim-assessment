@@ -3,7 +3,7 @@
 ## Project Overview
 🎉 **PHASE 1 MVP COMPLETE + MULTILINGUAL SUPPORT** - Advanced AI-powered document processing system for insurance claims implementing **95% of PDF workflow requirements**. Features comprehensive AI pipeline with document classification, quality assessment, fraud detection, intelligent decision making, and **full multilingual auto-translation capabilities**.
 
-**Version 3.2**: Latest improvements - **Intelligent Table Preservation System** with dual-mode OCR text processing for both structured tables and clean flowing text!
+**Version 3.3**: Latest improvements - **Language-Agnostic UI Design** with simplified translation controls and generic text labels for improved user experience!
 
 ### Phase 1 Implementation Status: ✅ COMPLETED
 
@@ -348,7 +348,38 @@ flowchart TD
 
 ## Recent Issues Resolved
 
-### Version 3.2.0 - Intelligent Table Preservation System (Latest)
+### Version 3.3.0 - Language-Agnostic UI Design (Latest)
+**Status: ✅ DEPLOYED - Simplified translation UI with generic labels and removed language identification**
+
+#### UI Simplification Improvements:
+1. **Generic Translation Labels**:
+   - **Before**: "Original (Vietnamese)" → **After**: "Original Text"
+   - **Before**: "English Translation" → **After**: "Translated Text"  
+   - **Removed**: Language detection confidence percentages and specific language names
+
+2. **Clean Toggle Interface**:
+   - **Document Icon**: 📄 for "Translated Text" (clean, professional)
+   - **Clipboard Icon**: 📋 for "Original Text" (simple, universal)
+   - **No Language Flags**: Eliminated country flags that could be inaccurate
+
+3. **Streamlined Information Display**:
+   - **Removed**: "Original Language: Vietnamese (100.0% confidence)" section
+   - **Simplified**: Just toggle between original and translated content
+   - **Focus**: Content quality over language detection accuracy
+
+#### User Experience Benefits:
+- **Accuracy Independence**: UI no longer depends on language detection accuracy
+- **Professional Appearance**: Clean, language-neutral interface design  
+- **Simplified Workflow**: Just "Original" vs "Translated" without technical details
+- **Universal Appeal**: Works for any language without cultural bias
+
+#### Technical Changes:
+- Updated `enhanced_results.html` template with generic labels
+- Removed `getLanguageFlag()` JavaScript function and language-specific logic
+- Simplified translation toggle buttons with universal icons
+- Hidden language detection information display sections
+
+### Version 3.2.0 - Intelligent Table Preservation System
 **Status: ✅ DEPLOYED - Advanced dual-mode OCR processing with intelligent table detection and preservation**
 
 #### Smart Table Preservation Features:
