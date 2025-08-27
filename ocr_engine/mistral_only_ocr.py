@@ -698,6 +698,9 @@ Translate any non-English content to English while preserving the document struc
         for i, line in enumerate(lines):
             line_type = table_info['line_types'].get(i, 'content')
             
+            # CRITICAL FIX: Strip ALL leading whitespace from every line first
+            line = line.strip()
+            
             if line_type == 'separator':
                 # Skip pure separator lines (--- | --- | ---)
                 continue
@@ -712,7 +715,7 @@ Translate any non-English content to English while preserving the document struc
                 processed_lines.append(cleaned_line)
             else:
                 # Unknown type - clean minimally
-                processed_lines.append(line.strip())
+                processed_lines.append(line)
         
         # Step 3: Format tables properly
         final_text = self._format_preserved_tables(processed_lines, table_info)
