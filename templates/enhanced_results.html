@@ -423,9 +423,7 @@
                 <!-- Translated Content Panel -->
                 <div class="content-panel translated-content active" id="translated-content">
                     <div class="extracted-text">
-                        <div class="extracted-text-content">
-                            {{ result.extracted_data.translated_ocr_text or result.ocr_text or 'No text available' }}
-                        </div>
+                        <div class="extracted-text-content">{{ result.extracted_data.translated_ocr_text or result.ocr_text or 'No text available' }}</div>
                     </div>
                 </div>
                 
@@ -433,9 +431,7 @@
                 {% if result.extracted_data.original_language and result.extracted_data.original_language != 'en' and result.extracted_data.translation_provider %}
                 <div class="content-panel original-content" id="original-content">
                     <div class="extracted-text">
-                        <div class="extracted-text-content">
-                            {{ result.extracted_data.original_ocr_text or 'No original text available' }}
-                        </div>
+                        <div class="extracted-text-content">{{ result.extracted_data.original_ocr_text or 'No original text available' }}</div>
                         
                         <!-- Language detection info removed for cleaner UI -->
                     </div>

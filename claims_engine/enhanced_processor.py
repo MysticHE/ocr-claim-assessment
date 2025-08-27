@@ -801,15 +801,6 @@ class EnhancedClaimProcessor:
             extracted.translation_provider = dual_content_result.get('translation_provider')
             extracted.language_confidence = dual_content_result.get('language_confidence')
             
-            # DEBUG: Log what text is being stored in database
-            original_text = dual_content_result.get('original_text', '')
-            translated_text = dual_content_result.get('translated_text', '')
-            print(f"[DATABASE STORAGE DEBUG] ================================")
-            print(f"[DATABASE STORAGE DEBUG] Original text (first 200 chars): '{original_text[:200]}'")
-            print(f"[DATABASE STORAGE DEBUG] Original leading spaces: {len(original_text) - len(original_text.lstrip())}")
-            print(f"[DATABASE STORAGE DEBUG] Translated text (first 200 chars): '{translated_text[:200]}'")
-            print(f"[DATABASE STORAGE DEBUG] Translated leading spaces: {len(translated_text) - len(translated_text.lstrip())}")
-            print(f"[DATABASE STORAGE DEBUG] ================================")
         
         # AI confidence scores removed for simplified processing
         
