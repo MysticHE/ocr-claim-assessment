@@ -23,13 +23,20 @@
       "Bash(where superclaude)",
       "Bash(echo $PATH)",
       "Bash(C:UsershuienAppDataLocalProgramsPythonPython313Scriptssuperclaude.exe --help)",
-      "Bash(\"/c/Users/huien/AppData/Local/Programs/Python/Python313/Scripts/superclaude.exe\" --help)"
+      "Bash(\"/c/Users/huien/AppData/Local/Programs/Python/Python313/Scripts/superclaude.exe\" --help)",
+      "Bash(git config:*)",
+      "Bash(gh auth:*)",
+      "Read(/C:\\Users\\huien\\OneDrive\\Desktop/**)",
+      "Read(/C:\\Users\\huien\\OneDrive\\Desktop/**)",
+      "Read(/C:\\Users\\huien\\OneDrive\\Desktop/**)",
+      "Read(/C:\\Users\\huien\\OneDrive\\Desktop/**)"
     ],
     "deny": [],
     "ask": [],
     "additionalDirectories": [
       "C:\\Users\\keyqu\\Downloads",
-      "C:\\c\\Users\\keyqu"
+      "C:\\c\\Users\\keyqu",
+      "C:\\c\\Users\\huien"
     ]
   }
 }

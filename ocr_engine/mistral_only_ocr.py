@@ -222,6 +222,15 @@ Translate any non-English content to English while preserving the document struc
             # This is the last line of defense before text reaches the Enhanced Processor
             final_text = extracted_text.lstrip() if extracted_text else ''
             
+            # DEBUG: Log final OCR result being returned
+            print(f"[FINAL RESULT DEBUG] ================================")
+            print(f"[FINAL RESULT DEBUG] Final text being returned (first 200 chars):")
+            print(f"'{final_text[:200]}'")
+            print(f"[FINAL RESULT DEBUG] Final leading spaces: {len(final_text) - len(final_text.lstrip())}")
+            print(f"[FINAL RESULT DEBUG] Final first line: '{final_text.split(chr(10))[0] if final_text else 'EMPTY'}'")
+            print(f"[FINAL RESULT DEBUG] Engine: mistral_ocr")
+            print(f"[FINAL RESULT DEBUG] ================================")
+            
             return {
                 'success': True,
                 'text': final_text,
@@ -288,6 +297,15 @@ Translate any non-English content to English while preserving the document struc
             # This is the last line of defense before text reaches the Enhanced Processor
             final_text = extracted_text.lstrip() if extracted_text else ''
             
+            # DEBUG: Log final OCR result being returned
+            print(f"[FINAL RESULT DEBUG] ================================")
+            print(f"[FINAL RESULT DEBUG] Final text being returned (first 200 chars):")
+            print(f"'{final_text[:200]}'")
+            print(f"[FINAL RESULT DEBUG] Final leading spaces: {len(final_text) - len(final_text.lstrip())}")
+            print(f"[FINAL RESULT DEBUG] Final first line: '{final_text.split(chr(10))[0] if final_text else 'EMPTY'}'")
+            print(f"[FINAL RESULT DEBUG] Engine: mistral_ocr")
+            print(f"[FINAL RESULT DEBUG] ================================")
+            
             return {
                 'success': True,
                 'text': final_text,
@@ -350,6 +368,15 @@ Translate any non-English content to English while preserving the document struc
             # FINAL SAFETY CHECK: Ensure absolutely no leading whitespace in final result
             # This is the last line of defense before text reaches the Enhanced Processor
             final_text = extracted_text.lstrip() if extracted_text else ''
+            
+            # DEBUG: Log final OCR result being returned
+            print(f"[FINAL RESULT DEBUG] ================================")
+            print(f"[FINAL RESULT DEBUG] Final text being returned (first 200 chars):")
+            print(f"'{final_text[:200]}'")
+            print(f"[FINAL RESULT DEBUG] Final leading spaces: {len(final_text) - len(final_text.lstrip())}")
+            print(f"[FINAL RESULT DEBUG] Final first line: '{final_text.split(chr(10))[0] if final_text else 'EMPTY'}'")
+            print(f"[FINAL RESULT DEBUG] Engine: mistral_ocr")
+            print(f"[FINAL RESULT DEBUG] ================================")
             
             return {
                 'success': True,
