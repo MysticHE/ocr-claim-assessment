@@ -634,6 +634,8 @@ Translate any non-English content to English while preserving the document struc
         
         # Step 3: Clean up lines that are mostly pipes and dashes (table formatting artifacts)
         lines = text.split('\n')
+        # CRITICAL FIX: Strip ALL leading whitespace from every line FIRST
+        lines = [line.strip() for line in lines]
         cleaned_lines = []
         
         for line in lines:
@@ -689,7 +691,10 @@ Translate any non-English content to English while preserving the document struc
         
         lines = text.split('\n')
         
-        # Step 1: Analyze document for table patterns
+        # CRITICAL FIX: Strip ALL leading whitespace from every line FIRST
+        lines = [line.strip() for line in lines]
+        
+        # Step 1: Analyze document for table patterns  
         table_info = self._analyze_table_structure(lines)
         
         # Step 2: Process each line based on table context
@@ -698,8 +703,7 @@ Translate any non-English content to English while preserving the document struc
         for i, line in enumerate(lines):
             line_type = table_info['line_types'].get(i, 'content')
             
-            # CRITICAL FIX: Strip ALL leading whitespace from every line first
-            line = line.strip()
+            # Line already stripped above, no need to strip again
             
             if line_type == 'separator':
                 # Skip pure separator lines (--- | --- | ---)
@@ -875,14 +879,24 @@ Translate any non-English content to English while preserving the document struc
         cleaned = re.sub(r'\s{2,}', ' ', cleaned)
         
         # Insert logical breaks for long clinic information lines
-        # Pattern: CLINIC_NAME + ADDRESS should have clear separation
-        if len(cleaned) > 80:  # Long lines likely need formatting
-            # Add line break before address patterns
-            cleaned = re.sub(r'([A-Z\s]{10,}?)(\d+\s+\w+\s+\w+)', r'\1\n\2', cleaned)
-            # Add line break before registration numbers
-            cleaned = re.sub(r'(.*?)(\([S]\(\d+\).*)', r'\1\n\2', cleaned)
-            # Add line break before contact information  
-            cleaned = re.sub(r'(.*?)(Tel:|Phone:|Telephone:)', r'\1\n\2', cleaned)
+        if len(cleaned) > 80:  # Long lines need proper formatting
+            # Add line break before address (starts with numbers)
+            cleaned = re.sub(r'(.*?SEGAR\s+)(\d+\s+)', r'\1\n\2', cleaned)
+            
+            # Add line break before GST & UEN
+            cleaned = re.sub(r'(\)\s+)(GST\s+&\s+UEN)', r'\1\n\2', cleaned)
+            
+            # Add line break before Telephone
+            cleaned = re.sub(r'(\d+D\s+)(Telephone:)', r'\1\n\2', cleaned)
+            
+            # Add line break before Attending Physician
+            cleaned = re.sub(r'(\d+\s+)(Attending\s+Physician:)', r'\1\n\2', cleaned)
+            
+            # Add line break before Invoice Date
+            cleaned = re.sub(r'(Ratnam\s+)(Invoice\s+Date:)', r'\1\n\2', cleaned)
+            
+            # Add line break before Provided by
+            cleaned = re.sub(r'(\d+\s+)(Provided\s+by:)', r'\1\n\2', cleaned)
         
         return cleaned.strip()
     
