@@ -199,7 +199,7 @@ Translate any non-English content to English while preserving the document struc
                     page.markdown for page in response.pages if hasattr(page, 'markdown') and page.markdown
                 ])
             
-            # Clean up repetitive OCR patterns that can cause issues
+            # Enhanced text cleaning: remove pipes, excessive spaces, and repetitive patterns
             extracted_text = self._clean_repetitive_patterns(extracted_text)
             
             processing_time = (time.time() - start_time) * 1000
@@ -257,7 +257,7 @@ Translate any non-English content to English while preserving the document struc
                     page.markdown for page in response.pages if hasattr(page, 'markdown') and page.markdown
                 ])
             
-            # Clean up repetitive OCR patterns that can cause issues
+            # Enhanced text cleaning: remove pipes, excessive spaces, and repetitive patterns
             extracted_text = self._clean_repetitive_patterns(extracted_text)
             
             processing_time = (time.time() - start_time) * 1000
@@ -510,14 +510,20 @@ Translate any non-English content to English while preserving the document struc
         return max(0.0, min(1.0, confidence))
     
     def _clean_repetitive_patterns(self, text: str) -> str:
-        """Clean up repetitive patterns caused by Mistral OCR API parsing bugs"""
+        """Enhanced text cleaning to remove repetitive patterns, pipe characters, and excessive spacing"""
         if not text:
             return text
         
         original_length = len(text)
-        lines = text.split('\n')
         
-        # Detect and remove obvious API hallucination patterns
+        import re
+        
+        # Step 1: Clean pipe characters and excessive spacing (NEW)
+        cleaned_text = self._clean_pipes_and_spacing(text)
+        
+        lines = cleaned_text.split('\n')
+        
+        # Step 2: Detect and remove obvious API hallucination patterns (EXISTING)
         cleaned_lines = []
         next_count = 0
         consecutive_numbered_next = 0
@@ -559,8 +565,6 @@ Translate any non-English content to English while preserving the document struc
         # Additional cleanup for API hallucination patterns
         cleaned_text = '\n'.join(cleaned_lines)
         
-        import re
-        
         # Remove massive numbered "Next:" sequences (obvious API bug)
         cleaned_text = re.sub(r'(\d+\.\s*\*\*Next:\*\*\s*\n?){5,}', 
                              '\n**[API parsing error detected and cleaned - multiple repetitive entries removed]**\n', 
@@ -571,7 +575,7 @@ Translate any non-English content to English while preserving the document struc
                              '\n**[Repetitive OCR parsing error cleaned]**\n', 
                              cleaned_text)
         
-        # Clean up excessive whitespace
+        # Step 3: Final cleanup of excessive whitespace
         cleaned_text = re.sub(r'\n\s*\n\s*\n+', '\n\n', cleaned_text)
         
         # Remove obvious pattern corruption at end of documents
@@ -597,11 +601,76 @@ Translate any non-English content to English while preserving the document struc
         final_length = len(cleaned_text)
         if original_length > final_length * 1.2:  # Any significant reduction indicates API bug
             reduction_pct = ((original_length - final_length) / original_length * 100)
-            print(f"   Mistral OCR API bug detected and cleaned: {original_length} -> {final_length} chars ({reduction_pct:.1f}% reduction)")
-            print(f"   Removed repetitive patterns that don't match document content")
+            print(f"   Enhanced OCR text cleaning applied: {original_length} -> {final_length} chars ({reduction_pct:.1f}% reduction)")
+            print(f"   Removed pipe characters, excessive spacing, and repetitive patterns")
         
         return cleaned_text
 
+    def _clean_pipes_and_spacing(self, text: str) -> str:
+        """Clean pipe characters and excessive spacing from OCR text"""
+        if not text:
+            return text
+        
+        import re
+        
+        # Step 1: Remove excessive pipe characters that are OCR artifacts
+        # Pattern: Multiple consecutive pipes (||||)
+        text = re.sub(r'\|{2,}', ' ', text)
+        
+        # Step 2: Remove standalone pipes surrounded by spaces
+        # Pattern: "word | | | word" -> "word word"
+        text = re.sub(r'\s*\|\s*\|\s*\|\s*', ' ', text)
+        text = re.sub(r'\s*\|\s*\|\s*', ' ', text)
+        text = re.sub(r'\s*\|\s*', ' ', text)
+        
+        # Step 3: Clean up lines that are mostly pipes and dashes (table formatting artifacts)
+        lines = text.split('\n')
+        cleaned_lines = []
+        
+        for line in lines:
+            # Skip lines that are mostly formatting characters
+            stripped_line = line.strip()
+            if stripped_line and len(stripped_line) > 0:
+                # Count actual content vs formatting characters
+                content_chars = re.sub(r'[\|\-\s_=]+', '', stripped_line)
+                formatting_chars = len(stripped_line) - len(content_chars)
+                
+                # If line is more than 70% formatting characters, it's likely a table border
+                if len(content_chars) > 0 and formatting_chars / len(stripped_line) < 0.7:
+                    cleaned_lines.append(line)
+                elif len(content_chars) == 0 and len(stripped_line) > 10:
+                    # Skip pure formatting lines
+                    continue
+                else:
+                    cleaned_lines.append(line)
+            else:
+                cleaned_lines.append(line)
+        
+        text = '\n'.join(cleaned_lines)
+        
+        # Step 4: Clean up multiple consecutive spaces
+        text = re.sub(r' {3,}', ' ', text)  # Replace 3+ spaces with single space
+        text = re.sub(r' {2}', ' ', text)   # Replace 2+ spaces with single space
+        
+        # Step 5: Fix spacing around common OCR patterns
+        # Fix: "word|word" -> "word word"
+        text = re.sub(r'([a-zA-Z0-9])\|([a-zA-Z0-9])', r'\1 \2', text)
+        
+        # Fix: "CLINIC BUKIT PANJANG SEGAR |" -> "CLINIC BUKIT PANJANG SEGAR"
+        text = re.sub(r'\s*\|\s*$', '', text, flags=re.MULTILINE)
+        text = re.sub(r'^\s*\|\s*', '', text, flags=re.MULTILINE)
+        
+        # Step 6: Clean up word boundaries
+        # Ensure proper spacing between words
+        text = re.sub(r'([a-zA-Z])([A-Z])', r'\1 \2', text)  # Split camelCase
+        
+        # Step 7: Final whitespace normalization
+        text = re.sub(r'\n\s*\n', '\n\n', text)  # Normalize line breaks
+        text = re.sub(r'\n{3,}', '\n\n', text)     # Max 2 consecutive line breaks
+        text = text.strip()  # Remove leading/trailing whitespace
+        
+        return text
+    
     def _detect_language(self, text: str) -> str:
         """Simple language detection based on text characteristics"""
         if not text:

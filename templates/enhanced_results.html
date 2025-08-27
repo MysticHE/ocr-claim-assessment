@@ -445,14 +445,7 @@
                             {{ result.extracted_data.original_ocr_text or 'No original text available' }}
                         </div>
                         
-                        <div class="language-info">
-                            <div class="detection-details">
-                                <span class="info-item">
-                                    <strong>Language Detected:</strong> {{ get_language_name(result.extracted_data.original_language) }} 
-                                    ({{ (result.extracted_data.language_confidence * 100)|round if result.extracted_data.language_confidence else '0' }}% confidence)
-                                </span>
-                            </div>
-                        </div>
+                        <!-- Language detection info removed for cleaner UI -->
                     </div>
                 </div>
                 {% endif %}
