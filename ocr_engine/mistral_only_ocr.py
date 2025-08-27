@@ -634,8 +634,8 @@ Translate any non-English content to English while preserving the document struc
         
         # Step 3: Clean up lines that are mostly pipes and dashes (table formatting artifacts)
         lines = text.split('\n')
-        # CRITICAL FIX: Strip ALL leading whitespace from every line FIRST
-        lines = [line.strip() for line in lines]
+        # CRITICAL FIX: Strip only trailing whitespace, preserve document structure
+        lines = [line.rstrip() for line in lines]
         cleaned_lines = []
         
         for line in lines:
@@ -691,8 +691,8 @@ Translate any non-English content to English while preserving the document struc
         
         lines = text.split('\n')
         
-        # CRITICAL FIX: Strip ALL leading whitespace from every line FIRST
-        lines = [line.strip() for line in lines]
+        # CRITICAL FIX: Strip only trailing whitespace, preserve document structure  
+        lines = [line.rstrip() for line in lines]
         
         # Step 1: Analyze document for table patterns  
         table_info = self._analyze_table_structure(lines)
