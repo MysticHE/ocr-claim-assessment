@@ -253,7 +253,7 @@
                 <div class="card-content-wide">
                     <div class="extracted-data-grid-wide">
                         {% for key, value in result.extracted_data.items() %}
-                            {% if key|lower not in ['quality_issues', 'treatment_dates', 'processing_stage', 'quality_acceptable', 'ai_confidence_scores', 'document_quality_score', 'workflow_steps_completed', 'document_classification_confidence', 'amounts', 'line_items', 'document_date', 'document_type'] %}
+                            {% if key|lower not in ['quality_issues', 'treatment_dates', 'processing_stage', 'quality_acceptable', 'ai_confidence_scores', 'document_quality_score', 'workflow_steps_completed', 'document_classification_confidence', 'amounts', 'line_items', 'document_date', 'document_type', 'original_language', 'original_ocr_text', 'translated_ocr_text', 'translation_provider', 'language_confidence'] %}
                             <div class="extracted-field-wide">
                                 <div class="field-label-wide">{{ key|replace('_', ' ')|title }}</div>
                                 <div class="field-value-wide">
